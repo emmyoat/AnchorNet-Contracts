@@ -1,0 +1,21 @@
+[package]
+name = "anchornet-contracts"
+version = "0.1.0"
+edition = "2021"
+description = "AnchorNet Soroban smart contracts for liquidity coordination"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = "25.0"
+
+[dev-dependencies]
+soroban-sdk = { version = "25.0", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+overflow-checks = true
