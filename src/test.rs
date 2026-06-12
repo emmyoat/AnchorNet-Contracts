@@ -1,11 +1,24 @@
-use crate::{AnchornetContract, AnchornetContractClient, Error};
-use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env};
+use crate::{AnchornetContract, AnchornetContractClient, Error, SettlementStatus};
+use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env, Symbol};
 
 fn setup(env: &Env) -> (AnchornetContractClient<'_>, Address) {
     let contract_id = env.register_contract(None, AnchornetContract);
     let client = AnchornetContractClient::new(env, &contract_id);
     let admin = Address::generate(env);
     (client, admin)
+}
+
+/// Initializes the contract, registers one anchor, and funds a pool.
+/// Auths are mocked. Returns the client, admin, anchor and funded asset.
+fn funded(env: &Env, liquidity: i128) -> (AnchornetContractClient<'_>, Address, Address, Symbol) {
+    env.mock_all_auths();
+    let (client, admin) = setup(env);
+    let anchor = Address::generate(env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &asset, &liquidity);
+    (client, admin, anchor, asset)
 }
 
 #[test]
@@ -225,4 +238,42 @@ fn test_set_admin_transfers_control() {
     client.set_admin(&new_admin);
 
     assert_eq!(client.admin(), new_admin);
+}
+
+#[test]
+fn test_pause_and_unpause() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    assert!(!client.is_paused());
+
+    client.pause();
+    assert!(client.is_paused());
+
+    client.unpause();
+    assert!(!client.is_paused());
+}
+
+#[test]
+fn test_paused_blocks_provide_and_withdraw() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.pause();
+
+    let provide = client
+        .try_provide_liquidity(&anchor, &asset, &100)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(provide, Error::Paused);
+
+    let withdraw = client
+        .try_withdraw_liquidity(&anchor, &asset, &100)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(withdraw, Error::Paused);
 }
