@@ -466,3 +466,53 @@ fn test_deregister_unknown_anchor_fails() {
         .unwrap();
     assert_eq!(err, Error::AnchorNotRegistered);
 }
+
+#[test]
+fn test_quote_fee_preview() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    client.initialize(&admin);
+    client.set_fee(&250); // 2.5%
+
+    assert_eq!(client.quote_fee(&1_000), 25);
+
+    let err = client.try_quote_fee(&0).err().unwrap().unwrap();
+    assert_eq!(err, Error::InvalidAmount);
+}
+
+#[test]
+fn test_zero_fee_when_unset() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let id = client.open_settlement(&anchor, &asset, &400);
+    assert_eq!(client.settlement(&id).fee, 0);
+}
+
+#[test]
+fn test_settlement_ids_increment() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let first = client.open_settlement(&anchor, &asset, &100);
+    let second = client.open_settlement(&anchor, &asset, &100);
+
+    assert_eq!(first, 1);
+    assert_eq!(second, 2);
+    assert_eq!(client.settlement_count(), 2);
+}
+
+#[test]
+fn test_paused_blocks_open_settlement() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.pause();
+    let err = client
+        .try_open_settlement(&anchor, &asset, &100)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::Paused);
+}
