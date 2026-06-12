@@ -133,3 +133,58 @@ fn test_provide_liquidity_rejects_non_positive_amount() {
 
     assert_eq!(err, Error::InvalidAmount);
 }
+
+#[test]
+fn test_withdraw_reduces_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.withdraw_liquidity(&anchor, &usdc, &400);
+
+    assert_eq!(client.balance(&anchor, &usdc), 600);
+    assert_eq!(client.total_liquidity(&usdc), 600);
+}
+
+#[test]
+fn test_full_withdraw_drops_provider_count() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.withdraw_liquidity(&anchor, &usdc, &1_000);
+
+    let pool = client.pool(&usdc);
+    assert_eq!(pool.total, 0);
+    assert_eq!(pool.providers, 0);
+}
+
+#[test]
+fn test_withdraw_insufficient_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &100);
+    let err = client
+        .try_withdraw_liquidity(&anchor, &usdc, &500)
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::InsufficientLiquidity);
+}
