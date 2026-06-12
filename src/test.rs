@@ -544,6 +544,38 @@ fn test_version() {
 }
 
 #[test]
+fn test_settlement_exists() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    assert!(!client.settlement_exists(&1));
+    let id = client.open_settlement(&anchor, &asset, &100);
+    assert!(client.settlement_exists(&id));
+}
+
+#[test]
+fn test_list_settlements_empty() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    assert_eq!(client.list_settlements(&1, &10).len(), 0);
+    assert_eq!(client.list_settlements(&100, &10).len(), 0);
+}
+
+#[test]
+fn test_open_settlement_rejects_non_positive_amount() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let err = client
+        .try_open_settlement(&anchor, &asset, &0)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidAmount);
+}
+
+#[test]
 fn test_is_initialized() {
     let env = Env::default();
     let (client, admin) = setup(&env);
