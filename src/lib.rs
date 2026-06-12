@@ -6,9 +6,12 @@
 use soroban_sdk::{contract, contractimpl, symbol_short, Env, Symbol, Vec};
 
 mod error;
+mod types;
 
 #[allow(unused_imports)]
 use error::Error;
+#[allow(unused_imports)]
+use types::Pool;
 
 const SYMBOL_GREETING: Symbol = symbol_short!("greeting");
 
