@@ -104,6 +104,7 @@ impl AnchornetContract {
         amount: i128,
     ) -> Result<(), Error> {
         provider.require_auth();
+        Self::require_not_paused(&env)?;
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
@@ -135,6 +136,7 @@ impl AnchornetContract {
         amount: i128,
     ) -> Result<(), Error> {
         provider.require_auth();
+        Self::require_not_paused(&env)?;
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
@@ -185,6 +187,14 @@ impl AnchornetContract {
         }
         let admin = storage::get_admin(env);
         admin.require_auth();
+        Ok(())
+    }
+
+    /// Requires the contract to be active (not paused).
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if storage::is_paused(env) {
+            return Err(Error::Paused);
+        }
         Ok(())
     }
 }
