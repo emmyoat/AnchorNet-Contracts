@@ -3,18 +3,15 @@
 //! This crate contains on-chain logic for the AnchorNet liquidity coordination
 //! network (liquidity pools, routing metadata, settlement hooks).
 
-use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, Symbol};
 
 mod error;
 mod events;
 mod storage;
 mod types;
 
-use error::Error;
-#[allow(unused_imports)]
+pub use error::Error;
 use types::Pool;
-
-const SYMBOL_GREETING: Symbol = symbol_short!("greeting");
 
 /// The AnchorNet liquidity coordination contract.
 ///
@@ -155,14 +152,6 @@ impl AnchornetContract {
     /// Returns `provider`'s liquidity balance in `asset` (zero if none).
     pub fn balance(env: Env, provider: Address, asset: Symbol) -> i128 {
         storage::get_balance(&env, &provider, &asset)
-    }
-
-    /// Returns a greeting; used to verify contract deployment and CI.
-    pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
-        let mut v: Vec<Symbol> = Vec::new(&env);
-        v.push_back(SYMBOL_GREETING);
-        v.push_back(to);
-        v
     }
 }
 

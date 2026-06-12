@@ -1,16 +1,30 @@
-use crate::{AnchornetContract, AnchornetContractClient};
-use soroban_sdk::{symbol_short, Env, Symbol, Vec};
+use crate::{AnchornetContract, AnchornetContractClient, Error};
+use soroban_sdk::{testutils::Address as _, Address, Env};
+
+fn setup(env: &Env) -> (AnchornetContractClient<'_>, Address) {
+    let contract_id = env.register_contract(None, AnchornetContract);
+    let client = AnchornetContractClient::new(env, &contract_id);
+    let admin = Address::generate(env);
+    (client, admin)
+}
 
 #[test]
-fn test_hello() {
+fn test_initialize_sets_admin() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, AnchornetContract);
-    let client = AnchornetContractClient::new(&env, &contract_id);
+    let (client, admin) = setup(&env);
 
-    let to = symbol_short!("Anchor");
-    let result: Vec<Symbol> = client.hello(&to);
+    client.initialize(&admin);
 
-    assert_eq!(result.len(), 2);
-    assert_eq!(result.get(0).unwrap(), symbol_short!("greeting"));
-    assert_eq!(result.get(1).unwrap(), symbol_short!("Anchor"));
+    assert_eq!(client.admin(), admin);
+}
+
+#[test]
+fn test_initialize_twice_fails() {
+    let env = Env::default();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    let err = client.try_initialize(&admin).err().unwrap().unwrap();
+
+    assert_eq!(err, Error::AlreadyInitialized);
 }
