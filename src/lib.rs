@@ -46,6 +46,11 @@ impl AnchornetContract {
         2
     }
 
+    /// Returns `true` if the contract has been initialized.
+    pub fn is_initialized(env: Env) -> bool {
+        storage::has_admin(&env)
+    }
+
     /// Returns the current administrator address.
     pub fn admin(env: Env) -> Result<Address, Error> {
         if !storage::has_admin(&env) {
