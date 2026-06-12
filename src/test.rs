@@ -302,3 +302,51 @@ fn test_set_fee_rejects_above_cap() {
 
     assert_eq!(err, Error::InvalidFee);
 }
+
+#[test]
+fn test_open_settlement_reserves_liquidity() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+
+    let id = client.open_settlement(&anchor, &asset, &400);
+    assert_eq!(id, 1);
+    assert_eq!(client.settlement_count(), 1);
+
+    // Reserved liquidity leaves the available pool.
+    assert_eq!(client.total_liquidity(&asset), 600);
+
+    let settlement = client.settlement(&id);
+    assert_eq!(settlement.amount, 400);
+    assert_eq!(settlement.fee, 4); // 1% of 400
+    assert_eq!(settlement.status, SettlementStatus::Pending);
+}
+
+#[test]
+fn test_open_settlement_rejects_insufficient_liquidity() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 100);
+
+    let err = client
+        .try_open_settlement(&anchor, &asset, &500)
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::InsufficientLiquidity);
+}
+
+#[test]
+fn test_open_settlement_rejects_unregistered() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+    let stranger = Address::generate(&env);
+
+    let err = client
+        .try_open_settlement(&stranger, &asset, &100)
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::AnchorNotRegistered);
+}
