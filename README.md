@@ -53,16 +53,45 @@ state.
 | `is_anchor(anchor)` | – | Check whether an address is registered |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
+| `deregister_anchor(anchor)` | admin | Remove an anchor from the approved set |
 | `pool(asset)` | – | Read aggregate pool state |
 | `total_liquidity(asset)` | – | Read total liquidity for an asset |
 | `balance(provider, asset)` | – | Read a provider's balance |
 
+### Admin & lifecycle
+
+| Function | Auth | Description |
+|----------|------|-------------|
+| `pause()` / `unpause()` | admin | Halt or resume liquidity & settlement mutations |
+| `is_paused()` | – | Read the paused flag |
+| `set_fee(bps)` | admin | Set the protocol fee in basis points (max 1000) |
+| `fee()` / `quote_fee(amount)` | – | Read the fee rate / preview a fee |
+| `collect_fees(asset)` | admin | Collect accrued protocol fees for an asset |
+| `fees_accrued(asset)` | – | Read uncollected fees for an asset |
+| `version()` | – | Read the contract interface version |
+
+### Settlement
+
+| Function | Auth | Description |
+|----------|------|-------------|
+| `open_settlement(anchor, asset, amount)` | anchor | Reserve pool liquidity, returns a settlement id |
+| `execute_settlement(id)` | admin | Finalize a settlement and accrue its fee |
+| `cancel_settlement(id)` | anchor | Cancel and return reserved liquidity to the pool |
+| `settlement(id)` | – | Read a settlement record |
+| `settlement_count()` | – | Read the number of settlements |
+| `list_settlements(start, limit)` | – | Page through settlements |
+
 ### Events
 
 - `("init",)` – contract initialized
-- `("anchor", anchor)` – anchor registered
+- `("anchor", anchor)` / `("deanchor", anchor)` – anchor registered / removed
 - `("provide", provider, asset)` – liquidity provided
 - `("withdraw", provider, asset)` – liquidity withdrawn
+- `("paused",)` – paused flag changed
+- `("fee",)` – protocol fee changed
+- `("settle", anchor, asset)` – settlement opened
+- `("executed", id)` / `("cancelled", id)` – settlement finalized / cancelled
+- `("collect", asset)` – fees collected
 
 ## Commands
 
