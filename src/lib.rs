@@ -224,6 +224,45 @@ impl AnchornetContract {
         Ok(id)
     }
 
+    /// Executes a pending settlement, accruing its fee for later collection.
+    /// Admin only. The reserved liquidity is considered released to the anchor.
+    pub fn execute_settlement(env: Env, id: u64) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        let mut settlement = storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)?;
+        if settlement.status != SettlementStatus::Pending {
+            return Err(Error::InvalidSettlementState);
+        }
+
+        let accrued = storage::get_fees_accrued(&env, &settlement.asset);
+        storage::set_fees_accrued(&env, &settlement.asset, accrued + settlement.fee);
+
+        settlement.status = SettlementStatus::Executed;
+        storage::set_settlement(&env, &settlement);
+
+        events::settlement_executed(&env, id);
+        Ok(())
+    }
+
+    /// Cancels a pending settlement and returns the reserved liquidity to the
+    /// pool. Requires authorization from the settlement's anchor.
+    pub fn cancel_settlement(env: Env, id: u64) -> Result<(), Error> {
+        let mut settlement = storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)?;
+        settlement.anchor.require_auth();
+        if settlement.status != SettlementStatus::Pending {
+            return Err(Error::InvalidSettlementState);
+        }
+
+        let mut pool = storage::get_pool(&env, &settlement.asset);
+        pool.total += settlement.amount;
+        storage::set_pool(&env, &settlement.asset, &pool);
+
+        settlement.status = SettlementStatus::Cancelled;
+        storage::set_settlement(&env, &settlement);
+
+        events::settlement_cancelled(&env, id);
+        Ok(())
+    }
+
     /// Returns the [`Pool`] for `asset`, or [`Error::PoolNotFound`] if no
     /// liquidity has ever been provided for it.
     pub fn pool(env: Env, asset: Symbol) -> Result<Pool, Error> {
