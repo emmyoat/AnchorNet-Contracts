@@ -188,3 +188,41 @@ fn test_withdraw_insufficient_fails() {
 
     assert_eq!(err, Error::InsufficientLiquidity);
 }
+
+#[test]
+fn test_pool_not_found() {
+    let env = Env::default();
+    let (client, admin) = setup(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    let err = client.try_pool(&usdc).err().unwrap().unwrap();
+
+    assert_eq!(err, Error::PoolNotFound);
+}
+
+#[test]
+fn test_unknown_balance_is_zero() {
+    let env = Env::default();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+
+    assert_eq!(client.balance(&anchor, &usdc), 0);
+    assert_eq!(client.total_liquidity(&usdc), 0);
+}
+
+#[test]
+fn test_set_admin_transfers_control() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let new_admin = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.set_admin(&new_admin);
+
+    assert_eq!(client.admin(), new_admin);
+}
