@@ -96,3 +96,40 @@ fn test_pool_aggregates_multiple_providers() {
     assert_eq!(pool.total, 1_000);
     assert_eq!(pool.providers, 2);
 }
+
+#[test]
+fn test_provide_liquidity_rejects_unregistered() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let stranger = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    let err = client
+        .try_provide_liquidity(&stranger, &usdc, &100)
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::AnchorNotRegistered);
+}
+
+#[test]
+fn test_provide_liquidity_rejects_non_positive_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    let err = client
+        .try_provide_liquidity(&anchor, &usdc, &0)
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::InvalidAmount);
+}
