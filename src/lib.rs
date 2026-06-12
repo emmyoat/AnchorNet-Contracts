@@ -5,6 +5,11 @@
 
 use soroban_sdk::{contract, contractimpl, symbol_short, Env, Symbol, Vec};
 
+mod error;
+
+#[allow(unused_imports)]
+use error::Error;
+
 const SYMBOL_GREETING: Symbol = symbol_short!("greeting");
 
 /// Placeholder AnchorNet contract for liquidity coordination.
