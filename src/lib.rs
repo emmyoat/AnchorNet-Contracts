@@ -11,7 +11,7 @@ mod storage;
 mod types;
 
 pub use error::Error;
-use types::{Pool, Settlement, SettlementStatus};
+pub use types::{Pool, Settlement, SettlementStatus};
 
 /// Maximum protocol fee that can be configured: 1000 bps (10%).
 const MAX_FEE_BPS: u32 = 1_000;
