@@ -11,7 +11,12 @@ mod storage;
 mod types;
 
 pub use error::Error;
-use types::Pool;
+use types::{Pool, Settlement, SettlementStatus};
+
+/// Maximum protocol fee that can be configured: 1000 bps (10%).
+const MAX_FEE_BPS: u32 = 1_000;
+/// Basis-points denominator.
+const BPS_DENOMINATOR: i128 = 10_000;
 
 /// The AnchorNet liquidity coordination contract.
 ///
@@ -72,6 +77,22 @@ impl AnchornetContract {
     /// Returns `true` if the contract is currently paused.
     pub fn is_paused(env: Env) -> bool {
         storage::is_paused(&env)
+    }
+
+    /// Sets the protocol fee in basis points (max 1000 = 10%). Admin only.
+    pub fn set_fee(env: Env, bps: u32) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if bps > MAX_FEE_BPS {
+            return Err(Error::InvalidFee);
+        }
+        storage::set_fee_bps(&env, bps);
+        events::fee_changed(&env, bps);
+        Ok(())
+    }
+
+    /// Returns the protocol fee in basis points.
+    pub fn fee(env: Env) -> u32 {
+        storage::get_fee_bps(&env)
     }
 
     /// Registers `anchor` as an approved liquidity provider. Admin only.
