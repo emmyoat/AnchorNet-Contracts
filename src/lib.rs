@@ -3,7 +3,7 @@
 //! This crate contains on-chain logic for the AnchorNet liquidity coordination
 //! network (liquidity pools, routing metadata, settlement hooks).
 
-use soroban_sdk::{contract, contractimpl, Address, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Vec};
 
 mod error;
 mod events;
@@ -324,6 +324,21 @@ impl AnchornetContract {
     /// Returns the number of settlements ever opened.
     pub fn settlement_count(env: Env) -> u64 {
         storage::get_settlement_count(&env)
+    }
+
+    /// Returns up to `limit` settlements starting at id `start` (inclusive).
+    /// Ids are assigned sequentially from 1; missing ids are skipped.
+    pub fn list_settlements(env: Env, start: u64, limit: u32) -> Vec<Settlement> {
+        let mut out = Vec::new(&env);
+        let count = storage::get_settlement_count(&env);
+        let mut id = if start == 0 { 1 } else { start };
+        while id <= count && (out.len() as u32) < limit {
+            if let Some(settlement) = storage::get_settlement(&env, id) {
+                out.push_back(settlement);
+            }
+            id += 1;
+        }
+        out
     }
 
     /// Returns the accrued (uncollected) protocol fees for `asset`.
