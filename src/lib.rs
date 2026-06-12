@@ -180,6 +180,50 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Opens a settlement that reserves `amount` of `asset` liquidity for the
+    /// requesting `anchor`. The reserved amount leaves the available pool and a
+    /// [`SettlementStatus::Pending`] record is created. Returns the new id.
+    pub fn open_settlement(
+        env: Env,
+        anchor: Address,
+        asset: Symbol,
+        amount: i128,
+    ) -> Result<u64, Error> {
+        anchor.require_auth();
+        Self::require_not_paused(&env)?;
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        if !storage::is_anchor(&env, &anchor) {
+            return Err(Error::AnchorNotRegistered);
+        }
+
+        let mut pool = storage::get_pool(&env, &asset);
+        if pool.total < amount {
+            return Err(Error::InsufficientLiquidity);
+        }
+        pool.total -= amount;
+        storage::set_pool(&env, &asset, &pool);
+
+        let fee = amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR;
+        let id = storage::get_settlement_count(&env) + 1;
+        storage::set_settlement_count(&env, id);
+        storage::set_settlement(
+            &env,
+            &Settlement {
+                id,
+                anchor: anchor.clone(),
+                asset: asset.clone(),
+                amount,
+                fee,
+                status: SettlementStatus::Pending,
+            },
+        );
+
+        events::settlement_opened(&env, id, &anchor, &asset);
+        Ok(id)
+    }
+
     /// Returns the [`Pool`] for `asset`, or [`Error::PoolNotFound`] if no
     /// liquidity has ever been provided for it.
     pub fn pool(env: Env, asset: Symbol) -> Result<Pool, Error> {
