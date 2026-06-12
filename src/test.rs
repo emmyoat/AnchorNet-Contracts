@@ -277,3 +277,28 @@ fn test_paused_blocks_provide_and_withdraw() {
         .unwrap();
     assert_eq!(withdraw, Error::Paused);
 }
+
+#[test]
+fn test_set_fee_updates_value() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    assert_eq!(client.fee(), 0);
+
+    client.set_fee(&25);
+    assert_eq!(client.fee(), 25);
+}
+
+#[test]
+fn test_set_fee_rejects_above_cap() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    let err = client.try_set_fee(&1_001).err().unwrap().unwrap();
+
+    assert_eq!(err, Error::InvalidFee);
+}
