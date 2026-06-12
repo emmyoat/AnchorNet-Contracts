@@ -380,3 +380,34 @@ fn test_cancel_settlement_returns_liquidity() {
     assert_eq!(client.total_liquidity(&asset), 1_000);
     assert_eq!(client.fees_accrued(&asset), 0);
 }
+
+#[test]
+fn test_settlement_not_found() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    let err = client.try_settlement(&99).err().unwrap().unwrap();
+    assert_eq!(err, Error::SettlementNotFound);
+}
+
+#[test]
+fn test_execute_twice_fails() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let id = client.open_settlement(&anchor, &asset, &200);
+    client.execute_settlement(&id);
+
+    let err = client.try_execute_settlement(&id).err().unwrap().unwrap();
+    assert_eq!(err, Error::InvalidSettlementState);
+}
+
+#[test]
+fn test_cancel_executed_fails() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let id = client.open_settlement(&anchor, &asset, &200);
+    client.execute_settlement(&id);
+
+    let err = client.try_cancel_settlement(&id).err().unwrap().unwrap();
+    assert_eq!(err, Error::InvalidSettlementState);
+}
