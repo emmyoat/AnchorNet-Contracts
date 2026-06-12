@@ -26,4 +26,14 @@ pub enum Error {
     InsufficientLiquidity = 7,
     /// No pool exists for the requested asset.
     PoolNotFound = 8,
+    /// The contract is paused and cannot process this operation.
+    Paused = 9,
+    /// The fee value is outside the allowed range.
+    InvalidFee = 10,
+    /// No settlement exists with the requested id.
+    SettlementNotFound = 11,
+    /// The settlement is not in a state that allows this transition.
+    InvalidSettlementState = 12,
+    /// There are no accrued fees to collect.
+    NoFeesToCollect = 13,
 }
