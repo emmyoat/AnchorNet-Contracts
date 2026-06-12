@@ -105,6 +105,39 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Withdraws `amount` of liquidity in `asset` back to `provider`.
+    ///
+    /// Requires authorization from `provider` and fails with
+    /// [`Error::InsufficientLiquidity`] if the provider's balance is too low.
+    pub fn withdraw_liquidity(
+        env: Env,
+        provider: Address,
+        asset: Symbol,
+        amount: i128,
+    ) -> Result<(), Error> {
+        provider.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let prior = storage::get_balance(&env, &provider, &asset);
+        if prior < amount {
+            return Err(Error::InsufficientLiquidity);
+        }
+
+        let mut pool = storage::get_pool(&env, &asset);
+        pool.total -= amount;
+        let remaining = prior - amount;
+        if remaining == 0 {
+            pool.providers -= 1;
+        }
+        storage::set_pool(&env, &asset, &pool);
+        storage::set_balance(&env, &provider, &asset, remaining);
+
+        events::liquidity_withdrawn(&env, &provider, &asset, amount);
+        Ok(())
+    }
+
     /// Returns a greeting; used to verify contract deployment and CI.
     pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
         let mut v: Vec<Symbol> = Vec::new(&env);
