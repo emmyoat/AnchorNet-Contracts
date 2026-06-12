@@ -1,5 +1,5 @@
 use crate::{AnchornetContract, AnchornetContractClient, Error};
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env};
 
 fn setup(env: &Env) -> (AnchornetContractClient<'_>, Address) {
     let contract_id = env.register_contract(None, AnchornetContract);
@@ -55,4 +55,44 @@ fn test_register_anchor_twice_fails() {
     let err = client.try_register_anchor(&anchor).err().unwrap().unwrap();
 
     assert_eq!(err, Error::AnchorAlreadyRegistered);
+}
+
+#[test]
+fn test_provide_liquidity_updates_pool_and_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+
+    assert_eq!(client.total_liquidity(&usdc), 1_000);
+    assert_eq!(client.balance(&anchor, &usdc), 1_000);
+
+    let pool = client.pool(&usdc);
+    assert_eq!(pool.total, 1_000);
+    assert_eq!(pool.providers, 1);
+}
+
+#[test]
+fn test_pool_aggregates_multiple_providers() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.provide_liquidity(&a1, &usdc, &600);
+    client.provide_liquidity(&a2, &usdc, &400);
+
+    let pool = client.pool(&usdc);
+    assert_eq!(pool.total, 1_000);
+    assert_eq!(pool.providers, 2);
 }
