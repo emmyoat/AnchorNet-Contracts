@@ -41,6 +41,11 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Returns the contract interface version.
+    pub fn version() -> u32 {
+        2
+    }
+
     /// Returns the current administrator address.
     pub fn admin(env: Env) -> Result<Address, Error> {
         if !storage::has_admin(&env) {
