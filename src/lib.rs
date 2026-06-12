@@ -95,6 +95,19 @@ impl AnchornetContract {
         storage::get_fee_bps(&env)
     }
 
+    /// Collects the accrued protocol fees for `asset`, resetting the balance to
+    /// zero and returning the collected amount. Admin only.
+    pub fn collect_fees(env: Env, asset: Symbol) -> Result<i128, Error> {
+        Self::require_admin(&env)?;
+        let amount = storage::get_fees_accrued(&env, &asset);
+        if amount == 0 {
+            return Err(Error::NoFeesToCollect);
+        }
+        storage::set_fees_accrued(&env, &asset, 0);
+        events::fees_collected(&env, &asset, amount);
+        Ok(amount)
+    }
+
     /// Registers `anchor` as an approved liquidity provider. Admin only.
     ///
     /// Returns [`Error::AnchorAlreadyRegistered`] if the anchor is already
