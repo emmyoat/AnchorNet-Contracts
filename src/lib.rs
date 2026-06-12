@@ -47,12 +47,32 @@ impl AnchornetContract {
         Ok(storage::get_admin(&env))
     }
 
+    /// Transfers administration to `new_admin`. Requires authorization from the
+    /// current administrator.
+    pub fn set_admin(env: Env, new_admin: Address) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::set_admin(&env, &new_admin);
+        Ok(())
+    }
+
     /// Returns a greeting; used to verify contract deployment and CI.
     pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
         let mut v: Vec<Symbol> = Vec::new(&env);
         v.push_back(SYMBOL_GREETING);
         v.push_back(to);
         v
+    }
+}
+
+impl AnchornetContract {
+    /// Requires the call to be authorized by the current administrator.
+    fn require_admin(env: &Env) -> Result<(), Error> {
+        if !storage::has_admin(env) {
+            return Err(Error::NotInitialized);
+        }
+        let admin = storage::get_admin(env);
+        admin.require_auth();
+        Ok(())
     }
 }
 
