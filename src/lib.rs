@@ -336,6 +336,11 @@ impl AnchornetContract {
         storage::get_settlement_count(&env)
     }
 
+    /// Returns `true` if a settlement with `id` exists.
+    pub fn settlement_exists(env: Env, id: u64) -> bool {
+        storage::get_settlement(&env, id).is_some()
+    }
+
     /// Returns up to `limit` settlements starting at id `start` (inclusive).
     /// Ids are assigned sequentially from 1; missing ids are skipped.
     pub fn list_settlements(env: Env, start: u64, limit: u32) -> Vec<Settlement> {
