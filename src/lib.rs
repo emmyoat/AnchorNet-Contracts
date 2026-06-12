@@ -55,6 +55,25 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Registers `anchor` as an approved liquidity provider. Admin only.
+    ///
+    /// Returns [`Error::AnchorAlreadyRegistered`] if the anchor is already
+    /// registered.
+    pub fn register_anchor(env: Env, anchor: Address) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if storage::is_anchor(&env, &anchor) {
+            return Err(Error::AnchorAlreadyRegistered);
+        }
+        storage::set_anchor(&env, &anchor);
+        events::anchor_registered(&env, &anchor);
+        Ok(())
+    }
+
+    /// Returns `true` if `anchor` is a registered liquidity provider.
+    pub fn is_anchor(env: Env, anchor: Address) -> bool {
+        storage::is_anchor(&env, &anchor)
+    }
+
     /// Returns a greeting; used to verify contract deployment and CI.
     pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
         let mut v: Vec<Symbol> = Vec::new(&env);
