@@ -25,6 +25,10 @@ pub enum DataKey {
     Pool(Symbol),
     /// A provider's liquidity balance in a given asset.
     Balance(Address, Symbol),
+    /// Whether the contract is paused.
+    Paused,
+    /// The protocol fee in basis points.
+    FeeBps,
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -47,6 +51,29 @@ pub fn get_admin(env: &Env) -> Address {
 /// Persists the administrator address in instance storage.
 pub fn set_admin(env: &Env, admin: &Address) {
     env.storage().instance().set(&DataKey::Admin, admin);
+}
+
+/// Returns `true` if the contract is currently paused.
+pub fn is_paused(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .get(&DataKey::Paused)
+        .unwrap_or(false)
+}
+
+/// Sets the paused flag.
+pub fn set_paused(env: &Env, paused: bool) {
+    env.storage().instance().set(&DataKey::Paused, &paused);
+}
+
+/// Reads the protocol fee in basis points (defaults to zero if unset).
+pub fn get_fee_bps(env: &Env) -> u32 {
+    env.storage().instance().get(&DataKey::FeeBps).unwrap_or(0)
+}
+
+/// Persists the protocol fee in basis points.
+pub fn set_fee_bps(env: &Env, bps: u32) {
+    env.storage().instance().set(&DataKey::FeeBps, &bps);
 }
 
 /// Returns `true` if `anchor` has been registered.
