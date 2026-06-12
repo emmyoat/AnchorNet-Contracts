@@ -516,3 +516,29 @@ fn test_paused_blocks_open_settlement() {
         .unwrap();
     assert_eq!(err, Error::Paused);
 }
+
+#[test]
+fn test_list_settlements_pagination() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    for _ in 0..3 {
+        client.open_settlement(&anchor, &asset, &100);
+    }
+
+    let all = client.list_settlements(&1, &10);
+    assert_eq!(all.len(), 3);
+
+    let page = client.list_settlements(&2, &10);
+    assert_eq!(page.len(), 2);
+    assert_eq!(page.get(0).unwrap().id, 2);
+
+    let limited = client.list_settlements(&1, &1);
+    assert_eq!(limited.len(), 1);
+}
+
+#[test]
+fn test_version() {
+    let env = Env::default();
+    let (client, _admin) = setup(&env);
+    assert_eq!(client.version(), 2);
+}
