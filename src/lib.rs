@@ -74,6 +74,37 @@ impl AnchornetContract {
         storage::is_anchor(&env, &anchor)
     }
 
+    /// Provides `amount` of liquidity in `asset` from `provider`.
+    ///
+    /// The provider must be a registered anchor and must authorize the call.
+    /// The pool's total and the provider's balance are increased by `amount`.
+    pub fn provide_liquidity(
+        env: Env,
+        provider: Address,
+        asset: Symbol,
+        amount: i128,
+    ) -> Result<(), Error> {
+        provider.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        if !storage::is_anchor(&env, &provider) {
+            return Err(Error::AnchorNotRegistered);
+        }
+
+        let mut pool = storage::get_pool(&env, &asset);
+        let prior = storage::get_balance(&env, &provider, &asset);
+        if prior == 0 {
+            pool.providers += 1;
+        }
+        pool.total += amount;
+        storage::set_pool(&env, &asset, &pool);
+        storage::set_balance(&env, &provider, &asset, prior + amount);
+
+        events::liquidity_provided(&env, &provider, &asset, amount);
+        Ok(())
+    }
+
     /// Returns a greeting; used to verify contract deployment and CI.
     pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
         let mut v: Vec<Symbol> = Vec::new(&env);
