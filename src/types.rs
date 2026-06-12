@@ -1,6 +1,6 @@
 //! On-chain data types for the AnchorNet liquidity contract.
 
-use soroban_sdk::{contracttype, Symbol};
+use soroban_sdk::{contracttype, Address, Symbol};
 
 /// A liquidity pool for a single asset within AnchorNet.
 ///
@@ -26,4 +26,34 @@ impl Pool {
             providers: 0,
         }
     }
+}
+
+/// Lifecycle state of a settlement request.
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SettlementStatus {
+    /// Liquidity has been reserved against the pool, awaiting execution.
+    Pending,
+    /// The settlement has been executed and liquidity released to the anchor.
+    Executed,
+    /// The settlement was cancelled and reserved liquidity returned to the pool.
+    Cancelled,
+}
+
+/// A request to draw `amount` of `asset` liquidity for cross-anchor settlement.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Settlement {
+    /// Monotonic identifier assigned by the contract.
+    pub id: u64,
+    /// Anchor that requested the settlement.
+    pub anchor: Address,
+    /// Asset being settled.
+    pub asset: Symbol,
+    /// Gross amount reserved from the pool.
+    pub amount: i128,
+    /// Protocol fee withheld from the amount.
+    pub fee: i128,
+    /// Current lifecycle state.
+    pub status: SettlementStatus,
 }
