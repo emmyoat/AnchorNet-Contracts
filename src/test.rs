@@ -350,3 +350,33 @@ fn test_open_settlement_rejects_unregistered() {
 
     assert_eq!(err, Error::AnchorNotRegistered);
 }
+
+#[test]
+fn test_execute_settlement_accrues_fee() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+    let id = client.open_settlement(&anchor, &asset, &400);
+
+    client.execute_settlement(&id);
+
+    assert_eq!(client.settlement(&id).status, SettlementStatus::Executed);
+    assert_eq!(client.fees_accrued(&asset), 4);
+    // Reserved liquidity stays out of the pool after execution.
+    assert_eq!(client.total_liquidity(&asset), 600);
+}
+
+#[test]
+fn test_cancel_settlement_returns_liquidity() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let id = client.open_settlement(&anchor, &asset, &400);
+    assert_eq!(client.total_liquidity(&asset), 600);
+
+    client.cancel_settlement(&id);
+
+    assert_eq!(client.settlement(&id).status, SettlementStatus::Cancelled);
+    // Reserved liquidity is returned to the pool.
+    assert_eq!(client.total_liquidity(&asset), 1_000);
+    assert_eq!(client.fees_accrued(&asset), 0);
+}
