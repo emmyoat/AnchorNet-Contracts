@@ -114,6 +114,18 @@ impl AnchornetContract {
         storage::is_anchor(&env, &anchor)
     }
 
+    /// Removes `anchor` from the approved set. Admin only. Existing pool
+    /// liquidity is unaffected; the anchor simply cannot open new positions.
+    pub fn deregister_anchor(env: Env, anchor: Address) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if !storage::is_anchor(&env, &anchor) {
+            return Err(Error::AnchorNotRegistered);
+        }
+        storage::set_anchor_flag(&env, &anchor, false);
+        events::anchor_removed(&env, &anchor);
+        Ok(())
+    }
+
     /// Provides `amount` of liquidity in `asset` from `provider`.
     ///
     /// The provider must be a registered anchor and must authorize the call.

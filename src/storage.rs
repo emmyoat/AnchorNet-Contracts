@@ -90,8 +90,13 @@ pub fn is_anchor(env: &Env, anchor: &Address) -> bool {
 
 /// Marks `anchor` as registered.
 pub fn set_anchor(env: &Env, anchor: &Address) {
+    set_anchor_flag(env, anchor, true);
+}
+
+/// Sets the registration flag for `anchor`.
+pub fn set_anchor_flag(env: &Env, anchor: &Address, registered: bool) {
     let key = DataKey::Anchor(anchor.clone());
-    env.storage().persistent().set(&key, &true);
+    env.storage().persistent().set(&key, &registered);
     extend(env, &key);
 }
 
