@@ -411,3 +411,58 @@ fn test_cancel_executed_fails() {
     let err = client.try_cancel_settlement(&id).err().unwrap().unwrap();
     assert_eq!(err, Error::InvalidSettlementState);
 }
+
+#[test]
+fn test_collect_fees_resets_balance() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+    let id = client.open_settlement(&anchor, &asset, &500);
+    client.execute_settlement(&id);
+    assert_eq!(client.fees_accrued(&asset), 5);
+
+    let collected = client.collect_fees(&asset);
+    assert_eq!(collected, 5);
+    assert_eq!(client.fees_accrued(&asset), 0);
+}
+
+#[test]
+fn test_collect_fees_without_accrual_fails() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+
+    let err = client.try_collect_fees(&asset).err().unwrap().unwrap();
+    assert_eq!(err, Error::NoFeesToCollect);
+}
+
+#[test]
+fn test_deregister_anchor_blocks_settlement() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.deregister_anchor(&anchor);
+    assert!(!client.is_anchor(&anchor));
+
+    let err = client
+        .try_open_settlement(&anchor, &asset, &100)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AnchorNotRegistered);
+}
+
+#[test]
+fn test_deregister_unknown_anchor_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let stranger = Address::generate(&env);
+
+    client.initialize(&admin);
+    let err = client
+        .try_deregister_anchor(&stranger)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AnchorNotRegistered);
+}
