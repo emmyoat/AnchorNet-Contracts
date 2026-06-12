@@ -5,7 +5,7 @@
 
 use soroban_sdk::{contracttype, Address, Env, Symbol};
 
-use crate::types::Pool;
+use crate::types::{Pool, Settlement};
 
 const DAY_IN_LEDGERS: u32 = 17_280;
 /// How long an entry's TTL is extended to on access (~30 days).
@@ -29,6 +29,12 @@ pub enum DataKey {
     Paused,
     /// The protocol fee in basis points.
     FeeBps,
+    /// Monotonic counter for settlement ids.
+    SettlementCount,
+    /// A settlement record by id.
+    Settlement(u64),
+    /// Protocol fees accrued (and not yet collected) for an asset.
+    FeesAccrued(Symbol),
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -124,6 +130,51 @@ pub fn get_balance(env: &Env, provider: &Address, asset: &Symbol) -> i128 {
 /// Persists a provider's balance in `asset`.
 pub fn set_balance(env: &Env, provider: &Address, asset: &Symbol, amount: i128) {
     let key = DataKey::Balance(provider.clone(), asset.clone());
+    env.storage().persistent().set(&key, &amount);
+    extend(env, &key);
+}
+
+/// Reads the settlement id counter (zero before the first settlement).
+pub fn get_settlement_count(env: &Env) -> u64 {
+    env.storage()
+        .instance()
+        .get(&DataKey::SettlementCount)
+        .unwrap_or(0)
+}
+
+/// Persists the settlement id counter.
+pub fn set_settlement_count(env: &Env, count: u64) {
+    env.storage()
+        .instance()
+        .set(&DataKey::SettlementCount, &count);
+}
+
+/// Reads a settlement by id, if it exists.
+pub fn get_settlement(env: &Env, id: u64) -> Option<Settlement> {
+    let key = DataKey::Settlement(id);
+    let found = env.storage().persistent().get(&key);
+    if found.is_some() {
+        extend(env, &key);
+    }
+    found
+}
+
+/// Persists a settlement record.
+pub fn set_settlement(env: &Env, settlement: &Settlement) {
+    let key = DataKey::Settlement(settlement.id);
+    env.storage().persistent().set(&key, settlement);
+    extend(env, &key);
+}
+
+/// Reads the accrued (uncollected) protocol fees for `asset`.
+pub fn get_fees_accrued(env: &Env, asset: &Symbol) -> i128 {
+    let key = DataKey::FeesAccrued(asset.clone());
+    env.storage().persistent().get(&key).unwrap_or(0)
+}
+
+/// Persists the accrued protocol fees for `asset`.
+pub fn set_fees_accrued(env: &Env, asset: &Symbol, amount: i128) {
+    let key = DataKey::FeesAccrued(asset.clone());
     env.storage().persistent().set(&key, &amount);
     extend(env, &key);
 }
