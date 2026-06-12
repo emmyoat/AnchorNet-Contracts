@@ -52,6 +52,28 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Pauses the contract, blocking liquidity and settlement mutations.
+    /// Admin only.
+    pub fn pause(env: Env) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::set_paused(&env, true);
+        events::paused_changed(&env, true);
+        Ok(())
+    }
+
+    /// Resumes the contract after a pause. Admin only.
+    pub fn unpause(env: Env) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::set_paused(&env, false);
+        events::paused_changed(&env, false);
+        Ok(())
+    }
+
+    /// Returns `true` if the contract is currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        storage::is_paused(&env)
+    }
+
     /// Registers `anchor` as an approved liquidity provider. Admin only.
     ///
     /// Returns [`Error::AnchorAlreadyRegistered`] if the anchor is already
