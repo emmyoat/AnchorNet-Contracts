@@ -542,3 +542,66 @@ fn test_version() {
     let (client, _admin) = setup(&env);
     assert_eq!(client.version(), 2);
 }
+
+#[test]
+fn test_is_initialized() {
+    let env = Env::default();
+    let (client, admin) = setup(&env);
+
+    assert!(!client.is_initialized());
+    client.initialize(&admin);
+    assert!(client.is_initialized());
+}
+
+#[test]
+fn test_fees_accumulate_across_settlements() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+
+    let first = client.open_settlement(&anchor, &asset, &300);
+    let second = client.open_settlement(&anchor, &asset, &200);
+    client.execute_settlement(&first);
+    client.execute_settlement(&second);
+
+    // 1% of 300 + 1% of 200 = 3 + 2 = 5
+    assert_eq!(client.fees_accrued(&asset), 5);
+}
+
+#[test]
+fn test_fees_are_tracked_per_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.set_fee(&100);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &1_000);
+
+    let s1 = client.open_settlement(&anchor, &usdc, &400);
+    client.execute_settlement(&s1);
+
+    assert_eq!(client.fees_accrued(&usdc), 4);
+    assert_eq!(client.fees_accrued(&eurc), 0);
+}
+
+#[test]
+fn test_cancel_restores_liquidity_with_fee_set() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100);
+
+    let id = client.open_settlement(&anchor, &asset, &400);
+    assert_eq!(client.total_liquidity(&asset), 600);
+
+    client.cancel_settlement(&id);
+
+    // The full reserved amount returns; fees are only accrued on execution.
+    assert_eq!(client.total_liquidity(&asset), 1_000);
+    assert_eq!(client.fees_accrued(&asset), 0);
+}
