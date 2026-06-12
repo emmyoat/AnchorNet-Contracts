@@ -6,6 +6,7 @@
 use soroban_sdk::{contract, contractimpl, symbol_short, Env, Symbol, Vec};
 
 mod error;
+mod storage;
 mod types;
 
 #[allow(unused_imports)]
