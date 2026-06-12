@@ -281,6 +281,21 @@ impl AnchornetContract {
     pub fn balance(env: Env, provider: Address, asset: Symbol) -> i128 {
         storage::get_balance(&env, &provider, &asset)
     }
+
+    /// Returns the settlement with `id`, or [`Error::SettlementNotFound`].
+    pub fn settlement(env: Env, id: u64) -> Result<Settlement, Error> {
+        storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)
+    }
+
+    /// Returns the number of settlements ever opened.
+    pub fn settlement_count(env: Env) -> u64 {
+        storage::get_settlement_count(&env)
+    }
+
+    /// Returns the accrued (uncollected) protocol fees for `asset`.
+    pub fn fees_accrued(env: Env, asset: Symbol) -> i128 {
+        storage::get_fees_accrued(&env, &asset)
+    }
 }
 
 impl AnchornetContract {
