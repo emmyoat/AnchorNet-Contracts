@@ -138,6 +138,25 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Returns the [`Pool`] for `asset`, or [`Error::PoolNotFound`] if no
+    /// liquidity has ever been provided for it.
+    pub fn pool(env: Env, asset: Symbol) -> Result<Pool, Error> {
+        if !storage::has_pool(&env, &asset) {
+            return Err(Error::PoolNotFound);
+        }
+        Ok(storage::get_pool(&env, &asset))
+    }
+
+    /// Returns the total liquidity available in `asset` across all providers.
+    pub fn total_liquidity(env: Env, asset: Symbol) -> i128 {
+        storage::get_pool(&env, &asset).total
+    }
+
+    /// Returns `provider`'s liquidity balance in `asset` (zero if none).
+    pub fn balance(env: Env, provider: Address, asset: Symbol) -> i128 {
+        storage::get_balance(&env, &provider, &asset)
+    }
+
     /// Returns a greeting; used to verify contract deployment and CI.
     pub fn hello(env: Env, to: Symbol) -> Vec<Symbol> {
         let mut v: Vec<Symbol> = Vec::new(&env);
