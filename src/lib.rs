@@ -95,6 +95,15 @@ impl AnchornetContract {
         storage::get_fee_bps(&env)
     }
 
+    /// Previews the protocol fee charged for settling `amount` at the current
+    /// fee rate, without changing any state.
+    pub fn quote_fee(env: Env, amount: i128) -> Result<i128, Error> {
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        Ok(amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR)
+    }
+
     /// Collects the accrued protocol fees for `asset`, resetting the balance to
     /// zero and returning the collected amount. Admin only.
     pub fn collect_fees(env: Env, asset: Symbol) -> Result<i128, Error> {
