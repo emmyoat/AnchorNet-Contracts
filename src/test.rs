@@ -567,6 +567,60 @@ fn test_list_settlements_pagination() {
 }
 
 #[test]
+fn test_list_settlements_by_anchor_filters_other_anchors() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.provide_liquidity(&a1, &usdc, &1_000);
+    client.provide_liquidity(&a2, &usdc, &1_000);
+
+    let s1 = client.open_settlement(&a1, &usdc, &100);
+    let s2 = client.open_settlement(&a2, &usdc, &100);
+    let s3 = client.open_settlement(&a1, &usdc, &100);
+
+    let a1_settlements = client.list_settlements_by_anchor(&a1, &1, &10);
+    assert_eq!(a1_settlements.len(), 2);
+    assert_eq!(a1_settlements.get(0).unwrap().id, s1);
+    assert_eq!(a1_settlements.get(1).unwrap().id, s3);
+
+    let a2_settlements = client.list_settlements_by_anchor(&a2, &1, &10);
+    assert_eq!(a2_settlements.len(), 1);
+    assert_eq!(a2_settlements.get(0).unwrap().id, s2);
+}
+
+#[test]
+fn test_list_settlements_by_anchor_respects_limit() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    for _ in 0..3 {
+        client.open_settlement(&anchor, &asset, &100);
+    }
+
+    let limited = client.list_settlements_by_anchor(&anchor, &1, &2);
+    assert_eq!(limited.len(), 2);
+}
+
+#[test]
+fn test_list_settlements_by_anchor_empty_for_unknown() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.open_settlement(&anchor, &asset, &100);
+    let stranger = Address::generate(&env);
+
+    assert_eq!(
+        client.list_settlements_by_anchor(&stranger, &1, &10).len(),
+        0
+    );
+}
+
+#[test]
 fn test_version() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
