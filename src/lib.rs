@@ -64,6 +64,7 @@ impl AnchornetContract {
     pub fn set_admin(env: Env, new_admin: Address) -> Result<(), Error> {
         Self::require_admin(&env)?;
         storage::set_admin(&env, &new_admin);
+        events::admin_changed(&env, &new_admin);
         Ok(())
     }
 

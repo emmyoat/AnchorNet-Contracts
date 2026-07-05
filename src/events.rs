@@ -11,6 +11,12 @@ pub fn initialized(env: &Env, admin: &Address) {
         .publish((symbol_short!("init"),), admin.clone());
 }
 
+/// Emitted when the administrator changes. Topics: `("admin",)`.
+pub fn admin_changed(env: &Env, new_admin: &Address) {
+    env.events()
+        .publish((symbol_short!("admin"),), new_admin.clone());
+}
+
 /// Emitted when an anchor is registered. Topics: `("anchor", anchor)`.
 pub fn anchor_registered(env: &Env, anchor: &Address) {
     env.events()
