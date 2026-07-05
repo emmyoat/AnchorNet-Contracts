@@ -68,6 +68,46 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Proposes `candidate` as the next administrator. Admin only.
+    ///
+    /// The transfer only takes effect once `candidate` calls
+    /// [`accept_admin`](Self::accept_admin), a safer two-step alternative to
+    /// [`set_admin`](Self::set_admin) that guards against transferring
+    /// control to an unreachable or mistyped address.
+    pub fn propose_admin(env: Env, candidate: Address) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::set_pending_admin(&env, &candidate);
+        events::admin_proposed(&env, &candidate);
+        Ok(())
+    }
+
+    /// Returns the address proposed to become the next administrator, if
+    /// any.
+    pub fn pending_admin(env: Env) -> Result<Address, Error> {
+        if !storage::has_pending_admin(&env) {
+            return Err(Error::NoPendingAdmin);
+        }
+        Ok(storage::get_pending_admin(&env))
+    }
+
+    /// Accepts a pending admin transfer proposed via
+    /// [`propose_admin`](Self::propose_admin). Requires authorization from
+    /// `candidate`, who must match the proposed address.
+    pub fn accept_admin(env: Env, candidate: Address) -> Result<(), Error> {
+        if !storage::has_pending_admin(&env) {
+            return Err(Error::NoPendingAdmin);
+        }
+        if storage::get_pending_admin(&env) != candidate {
+            return Err(Error::NotPendingAdmin);
+        }
+        candidate.require_auth();
+
+        storage::set_admin(&env, &candidate);
+        storage::clear_pending_admin(&env);
+        events::admin_changed(&env, &candidate);
+        Ok(())
+    }
+
     /// Pauses the contract, blocking liquidity and settlement mutations.
     /// Admin only.
     pub fn pause(env: Env) -> Result<(), Error> {
