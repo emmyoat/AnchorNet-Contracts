@@ -3,7 +3,7 @@
 //! All persistent entries use the `persistent` storage with a TTL that is
 //! extended on every read/write so that active pools are not archived.
 
-use soroban_sdk::{contracttype, Address, Env, Symbol};
+use soroban_sdk::{contracttype, Address, Env, Symbol, Vec};
 
 use crate::types::{Pool, Settlement};
 
@@ -35,6 +35,8 @@ pub enum DataKey {
     Settlement(u64),
     /// Protocol fees accrued (and not yet collected) for an asset.
     FeesAccrued(Symbol),
+    /// Ordered list of every address ever registered as an anchor.
+    AnchorList,
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -97,6 +99,38 @@ pub fn set_anchor(env: &Env, anchor: &Address) {
 pub fn set_anchor_flag(env: &Env, anchor: &Address, registered: bool) {
     let key = DataKey::Anchor(anchor.clone());
     env.storage().persistent().set(&key, &registered);
+    extend(env, &key);
+}
+
+/// Reads the ordered list of every address ever registered as an anchor.
+///
+/// The list is append-only: deregistering an anchor does not remove it, so
+/// callers must pair this with [`is_anchor`] to find currently active
+/// anchors.
+pub fn get_anchor_list(env: &Env) -> Vec<Address> {
+    let key = DataKey::AnchorList;
+    match env
+        .storage()
+        .persistent()
+        .get::<DataKey, Vec<Address>>(&key)
+    {
+        Some(list) => {
+            extend(env, &key);
+            list
+        }
+        None => Vec::new(env),
+    }
+}
+
+/// Appends `anchor` to the anchor list if it is not already present.
+pub fn remember_anchor(env: &Env, anchor: &Address) {
+    let mut list = get_anchor_list(env);
+    if list.contains(anchor) {
+        return;
+    }
+    list.push_back(anchor.clone());
+    let key = DataKey::AnchorList;
+    env.storage().persistent().set(&key, &list);
     extend(env, &key);
 }
 
