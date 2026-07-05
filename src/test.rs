@@ -1,5 +1,9 @@
 use crate::{AnchornetContract, AnchornetContractClient, Error, SettlementStatus};
-use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env, Symbol};
+use soroban_sdk::{
+    symbol_short,
+    testutils::{Address as _, Events as _},
+    vec, Address, Env, IntoVal, Symbol,
+};
 
 fn setup(env: &Env) -> (AnchornetContractClient<'_>, Address) {
     let contract_id = env.register_contract(None, AnchornetContract);
@@ -238,6 +242,32 @@ fn test_set_admin_transfers_control() {
     client.set_admin(&new_admin);
 
     assert_eq!(client.admin(), new_admin);
+}
+
+#[test]
+fn test_set_admin_emits_admin_changed_event() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let new_admin = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.set_admin(&new_admin);
+
+    // `events().all()` reflects the most recent top-level invocation, i.e.
+    // just the `set_admin` call.
+    let events = env.events().all();
+    assert_eq!(
+        events,
+        vec![
+            &env,
+            (
+                client.address.clone(),
+                (symbol_short!("admin"),).into_val(&env),
+                new_admin.into_val(&env),
+            ),
+        ]
+    );
 }
 
 #[test]
