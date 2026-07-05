@@ -36,4 +36,8 @@ pub enum Error {
     InvalidSettlementState = 12,
     /// There are no accrued fees to collect.
     NoFeesToCollect = 13,
+    /// No admin transfer has been proposed.
+    NoPendingAdmin = 14,
+    /// The caller is not the address proposed as the next administrator.
+    NotPendingAdmin = 15,
 }
