@@ -137,6 +137,7 @@ impl AnchornetContract {
             return Err(Error::AnchorAlreadyRegistered);
         }
         storage::set_anchor(&env, &anchor);
+        storage::remember_anchor(&env, &anchor);
         events::anchor_registered(&env, &anchor);
         Ok(())
     }
@@ -144,6 +145,25 @@ impl AnchornetContract {
     /// Returns `true` if `anchor` is a registered liquidity provider.
     pub fn is_anchor(env: Env, anchor: Address) -> bool {
         storage::is_anchor(&env, &anchor)
+    }
+
+    /// Returns every currently registered anchor, in registration order.
+    ///
+    /// Anchors that have been [`deregister_anchor`](Self::deregister_anchor)ed
+    /// are excluded.
+    pub fn list_anchors(env: Env) -> Vec<Address> {
+        let mut out = Vec::new(&env);
+        for anchor in storage::get_anchor_list(&env).iter() {
+            if storage::is_anchor(&env, &anchor) {
+                out.push_back(anchor);
+            }
+        }
+        out
+    }
+
+    /// Returns the number of currently registered anchors.
+    pub fn anchor_count(env: Env) -> u32 {
+        Self::list_anchors(env).len()
     }
 
     /// Removes `anchor` from the approved set. Admin only. Existing pool
