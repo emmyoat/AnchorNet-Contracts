@@ -37,6 +37,8 @@ pub enum DataKey {
     FeesAccrued(Symbol),
     /// Ordered list of every address ever registered as an anchor.
     AnchorList,
+    /// The address proposed to become the next administrator, if any.
+    PendingAdmin,
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -59,6 +61,33 @@ pub fn get_admin(env: &Env) -> Address {
 /// Persists the administrator address in instance storage.
 pub fn set_admin(env: &Env, admin: &Address) {
     env.storage().instance().set(&DataKey::Admin, admin);
+}
+
+/// Returns `true` if an admin transfer has been proposed and not yet
+/// accepted or overwritten.
+pub fn has_pending_admin(env: &Env) -> bool {
+    env.storage().instance().has(&DataKey::PendingAdmin)
+}
+
+/// Reads the proposed next administrator. Panics if none is pending —
+/// callers should guard with [`has_pending_admin`] first.
+pub fn get_pending_admin(env: &Env) -> Address {
+    env.storage()
+        .instance()
+        .get(&DataKey::PendingAdmin)
+        .unwrap()
+}
+
+/// Persists the proposed next administrator.
+pub fn set_pending_admin(env: &Env, candidate: &Address) {
+    env.storage()
+        .instance()
+        .set(&DataKey::PendingAdmin, candidate);
+}
+
+/// Clears any proposed admin transfer.
+pub fn clear_pending_admin(env: &Env) {
+    env.storage().instance().remove(&DataKey::PendingAdmin);
 }
 
 /// Returns `true` if the contract is currently paused.
