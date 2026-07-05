@@ -623,6 +623,67 @@ fn test_fees_are_tracked_per_asset() {
 }
 
 #[test]
+fn test_list_anchors_returns_registered_in_order() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+
+    client.initialize(&admin);
+    assert_eq!(client.list_anchors().len(), 0);
+    assert_eq!(client.anchor_count(), 0);
+
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+
+    let anchors = client.list_anchors();
+    assert_eq!(anchors.len(), 2);
+    assert_eq!(anchors.get(0).unwrap(), a1);
+    assert_eq!(anchors.get(1).unwrap(), a2);
+    assert_eq!(client.anchor_count(), 2);
+}
+
+#[test]
+fn test_list_anchors_excludes_deregistered() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.deregister_anchor(&a1);
+
+    let anchors = client.list_anchors();
+    assert_eq!(anchors.len(), 1);
+    assert_eq!(anchors.get(0).unwrap(), a2);
+    assert_eq!(client.anchor_count(), 1);
+}
+
+#[test]
+fn test_list_anchors_reflects_reregistration() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.deregister_anchor(&anchor);
+    assert_eq!(client.anchor_count(), 0);
+
+    // Re-registering a previously removed anchor must not duplicate it in
+    // the enumerated list.
+    client.register_anchor(&anchor);
+    let anchors = client.list_anchors();
+    assert_eq!(anchors.len(), 1);
+    assert_eq!(anchors.get(0).unwrap(), anchor);
+}
+
+#[test]
 fn test_cancel_restores_liquidity_with_fee_set() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
