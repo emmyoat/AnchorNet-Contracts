@@ -653,6 +653,83 @@ fn test_fees_are_tracked_per_asset() {
 }
 
 #[test]
+fn test_propose_and_accept_admin_transfers_control() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let candidate = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.propose_admin(&candidate);
+    assert_eq!(client.pending_admin(), candidate);
+    // Control does not change until the candidate explicitly accepts.
+    assert_eq!(client.admin(), admin);
+
+    client.accept_admin(&candidate);
+
+    assert_eq!(client.admin(), candidate);
+    let err = client.try_pending_admin().err().unwrap().unwrap();
+    assert_eq!(err, Error::NoPendingAdmin);
+}
+
+#[test]
+fn test_accept_admin_without_proposal_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let candidate = Address::generate(&env);
+
+    client.initialize(&admin);
+    let err = client.try_accept_admin(&candidate).err().unwrap().unwrap();
+
+    assert_eq!(err, Error::NoPendingAdmin);
+}
+
+#[test]
+fn test_accept_admin_wrong_candidate_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let candidate = Address::generate(&env);
+    let stranger = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.propose_admin(&candidate);
+    let err = client.try_accept_admin(&stranger).err().unwrap().unwrap();
+
+    assert_eq!(err, Error::NotPendingAdmin);
+    // The original proposal is untouched by the rejected attempt.
+    assert_eq!(client.pending_admin(), candidate);
+}
+
+#[test]
+fn test_propose_admin_overwrites_prior_proposal() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let first = Address::generate(&env);
+    let second = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.propose_admin(&first);
+    client.propose_admin(&second);
+
+    assert_eq!(client.pending_admin(), second);
+    let err = client.try_accept_admin(&first).err().unwrap().unwrap();
+    assert_eq!(err, Error::NotPendingAdmin);
+}
+
+#[test]
+fn test_pending_admin_unset_by_default() {
+    let env = Env::default();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    let err = client.try_pending_admin().err().unwrap().unwrap();
+    assert_eq!(err, Error::NoPendingAdmin);
+}
+
+#[test]
 fn test_list_anchors_returns_registered_in_order() {
     let env = Env::default();
     env.mock_all_auths();
