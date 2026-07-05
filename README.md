@@ -48,9 +48,14 @@ state.
 |----------|------|-------------|
 | `initialize(admin)` | once | Set the contract administrator |
 | `admin()` | – | Read the current administrator |
-| `set_admin(new_admin)` | admin | Transfer administration |
+| `set_admin(new_admin)` | admin | Transfer administration in a single step |
+| `propose_admin(candidate)` | admin | Propose `candidate` as the next administrator |
+| `accept_admin(candidate)` | candidate | Accept a pending admin transfer |
+| `pending_admin()` | – | Read the proposed next administrator, if any |
 | `register_anchor(anchor)` | admin | Approve an anchor as a liquidity provider |
 | `is_anchor(anchor)` | – | Check whether an address is registered |
+| `list_anchors()` | – | Enumerate currently registered anchors |
+| `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
 | `deregister_anchor(anchor)` | admin | Remove an anchor from the approved set |
@@ -80,10 +85,13 @@ state.
 | `settlement(id)` | – | Read a settlement record |
 | `settlement_count()` | – | Read the number of settlements |
 | `list_settlements(start, limit)` | – | Page through settlements |
+| `list_settlements_by_anchor(anchor, start, limit)` | – | Page through settlements opened by one anchor |
 
 ### Events
 
 - `("init",)` – contract initialized
+- `("admin",)` – administrator changed (via `set_admin` or `accept_admin`)
+- `("propose",)` – admin transfer proposed
 - `("anchor", anchor)` / `("deanchor", anchor)` – anchor registered / removed
 - `("provide", provider, asset)` – liquidity provided
 - `("withdraw", provider, asset)` – liquidity withdrawn
