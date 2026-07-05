@@ -17,6 +17,12 @@ pub fn admin_changed(env: &Env, new_admin: &Address) {
         .publish((symbol_short!("admin"),), new_admin.clone());
 }
 
+/// Emitted when an admin transfer is proposed. Topics: `("propose",)`.
+pub fn admin_proposed(env: &Env, candidate: &Address) {
+    env.events()
+        .publish((symbol_short!("propose"),), candidate.clone());
+}
+
 /// Emitted when an anchor is registered. Topics: `("anchor", anchor)`.
 pub fn anchor_registered(env: &Env, anchor: &Address) {
     env.events()
