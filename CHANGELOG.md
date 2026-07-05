@@ -2,6 +2,24 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.3.0]
+
+### Added
+
+- **Anchor enumeration:** `list_anchors` returns every currently registered
+  anchor in registration order; `anchor_count` reads how many are active.
+  Deregistered anchors are excluded but re-registration does not duplicate an
+  anchor in the list.
+- **Two-step admin transfer:** `propose_admin` / `accept_admin` offer a safer
+  alternative to the existing single-step `set_admin`, requiring the proposed
+  address to explicitly accept before control changes. `pending_admin` reads
+  the outstanding proposal, if any.
+- **Settlement queries:** `list_settlements_by_anchor` pages through the
+  settlements opened by a single anchor.
+- **Events:** `set_admin` (and the new `accept_admin`) now emit an `("admin",)`
+  event on administrator change, closing a gap where admin transfers were
+  previously silent; `propose_admin` emits `("propose",)`.
+
 ## [0.2.0]
 
 ### Added
