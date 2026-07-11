@@ -41,6 +41,9 @@ pub enum DataKey {
     PendingAdmin,
     /// Whether an anchor is exempt from protocol settlement fees.
     FeeWaiver(Address),
+    /// Number of ledgers after which a pending settlement may be reclaimed
+    /// via `cancel_expired_settlement`. Zero disables expiry.
+    SettlementExpiryLedgers,
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -247,6 +250,22 @@ pub fn set_fee_waiver(env: &Env, anchor: &Address, waived: bool) {
     let key = DataKey::FeeWaiver(anchor.clone());
     env.storage().persistent().set(&key, &waived);
     extend(env, &key);
+}
+
+/// Reads the settlement expiry window in ledgers (zero if never configured,
+/// meaning settlements never expire).
+pub fn get_settlement_expiry_ledgers(env: &Env) -> u32 {
+    env.storage()
+        .instance()
+        .get(&DataKey::SettlementExpiryLedgers)
+        .unwrap_or(0)
+}
+
+/// Persists the settlement expiry window in ledgers.
+pub fn set_settlement_expiry_ledgers(env: &Env, ledgers: u32) {
+    env.storage()
+        .instance()
+        .set(&DataKey::SettlementExpiryLedgers, &ledgers);
 }
 
 /// Reads the accrued (uncollected) protocol fees for `asset`.
