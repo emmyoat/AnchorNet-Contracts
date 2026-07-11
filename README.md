@@ -53,15 +53,18 @@ state.
 | `accept_admin(candidate)` | candidate | Accept a pending admin transfer |
 | `pending_admin()` | – | Read the proposed next administrator, if any |
 | `register_anchor(anchor)` | admin | Approve an anchor as a liquidity provider |
+| `register_anchors(anchors)` | admin | Approve a batch of anchors atomically in one call |
 | `is_anchor(anchor)` | – | Check whether an address is registered |
 | `list_anchors(start, limit)` | – | Page through currently registered anchors |
 | `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
+| `withdraw_all_liquidity(provider, asset)` | provider | Withdraw a provider's entire balance in one call |
 | `deregister_anchor(anchor)` | admin | Remove an anchor from the approved set |
 | `pool(asset)` | – | Read aggregate pool state |
 | `total_liquidity(asset)` | – | Read total liquidity for an asset |
 | `balance(provider, asset)` | – | Read a provider's balance |
+| `list_assets(start, limit)` | – | Page through every asset that has ever had liquidity provided |
 
 ### Admin & lifecycle
 
@@ -75,6 +78,7 @@ state.
 | `fees_accrued(asset)` | – | Read uncollected fees for an asset |
 | `set_fee_waiver(anchor, waived)` | admin | Grant or revoke a fee waiver for a registered anchor |
 | `is_fee_waived(anchor)` | – | Check whether an anchor is exempt from settlement fees |
+| `list_fee_waived_anchors(start, limit)` | – | Page through currently registered anchors with an active fee waiver |
 | `version()` | – | Read the contract interface version |
 
 ### Settlement
@@ -84,11 +88,19 @@ state.
 | `open_settlement(anchor, asset, amount)` | anchor | Reserve pool liquidity, returns a settlement id |
 | `execute_settlement(id)` | admin | Finalize a settlement and accrue its fee |
 | `cancel_settlement(id)` | anchor | Cancel and return reserved liquidity to the pool |
+| `cancel_expired_settlement(id)` | – | Reclaim a timed-out pending settlement's liquidity to the pool |
+| `set_settlement_expiry_ledgers(ledgers)` | admin | Set the ledger window after which a pending settlement may be reclaimed (0 disables) |
+| `settlement_expiry_ledgers()` | – | Read the settlement expiry window in ledgers |
 | `settlement(id)` | – | Read a settlement record |
 | `settlement_count()` | – | Read the number of settlements |
 | `list_settlements(start, limit)` | – | Page through settlements |
 | `list_settlements_by_anchor(anchor, start, limit)` | – | Page through settlements opened by one anchor |
 | `list_settlements_by_asset(asset, start, limit)` | – | Page through settlements in one asset |
+
+`cancel_expired_settlement` requires no authorization: it only ever returns
+liquidity to the shared pool it was reserved from, never to an external
+party, so anyone (including an off-chain keeper) may call it once a pending
+settlement has passed the configured expiry window.
 
 ### Events
 
@@ -103,6 +115,8 @@ state.
 - `("waiver", anchor)` – anchor fee waiver granted or revoked
 - `("settle", anchor, asset)` – settlement opened
 - `("executed", id)` / `("cancelled", id)` – settlement finalized / cancelled
+- `("expired", id)` – settlement reclaimed after timing out
+- `("expiry",)` – settlement expiry window changed
 - `("collect", asset)` – fees collected
 
 ## Contract metadata
