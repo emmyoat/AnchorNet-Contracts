@@ -842,13 +842,13 @@ fn test_list_anchors_returns_registered_in_order() {
     let a2 = Address::generate(&env);
 
     client.initialize(&admin);
-    assert_eq!(client.list_anchors().len(), 0);
+    assert_eq!(client.list_anchors(&0, &10).len(), 0);
     assert_eq!(client.anchor_count(), 0);
 
     client.register_anchor(&a1);
     client.register_anchor(&a2);
 
-    let anchors = client.list_anchors();
+    let anchors = client.list_anchors(&0, &10);
     assert_eq!(anchors.len(), 2);
     assert_eq!(anchors.get(0).unwrap(), a1);
     assert_eq!(anchors.get(1).unwrap(), a2);
@@ -868,7 +868,7 @@ fn test_list_anchors_excludes_deregistered() {
     client.register_anchor(&a2);
     client.deregister_anchor(&a1);
 
-    let anchors = client.list_anchors();
+    let anchors = client.list_anchors(&0, &10);
     assert_eq!(anchors.len(), 1);
     assert_eq!(anchors.get(0).unwrap(), a2);
     assert_eq!(client.anchor_count(), 1);
@@ -889,7 +889,7 @@ fn test_list_anchors_reflects_reregistration() {
     // Re-registering a previously removed anchor must not duplicate it in
     // the enumerated list.
     client.register_anchor(&anchor);
-    let anchors = client.list_anchors();
+    let anchors = client.list_anchors(&0, &10);
     assert_eq!(anchors.len(), 1);
     assert_eq!(anchors.get(0).unwrap(), anchor);
 }

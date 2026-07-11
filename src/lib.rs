@@ -188,23 +188,35 @@ impl AnchornetContract {
         storage::is_anchor(&env, &anchor)
     }
 
-    /// Returns every currently registered anchor, in registration order.
-    ///
-    /// Anchors that have been [`deregister_anchor`](Self::deregister_anchor)ed
-    /// are excluded.
-    pub fn list_anchors(env: Env) -> Vec<Address> {
+    /// Returns up to `limit` currently registered anchors, in registration
+    /// order, scanning the registration history starting at list index
+    /// `start` (0-based). Anchors that have been
+    /// [`deregister_anchor`](Self::deregister_anchor)ed are skipped without
+    /// counting toward `limit`.
+    pub fn list_anchors(env: Env, start: u32, limit: u32) -> Vec<Address> {
         let mut out = Vec::new(&env);
-        for anchor in storage::get_anchor_list(&env).iter() {
+        let list = storage::get_anchor_list(&env);
+        let total = list.len();
+        let mut idx = start;
+        while idx < total && (out.len() as u32) < limit {
+            let anchor = list.get(idx).unwrap();
             if storage::is_anchor(&env, &anchor) {
                 out.push_back(anchor);
             }
+            idx += 1;
         }
         out
     }
 
     /// Returns the number of currently registered anchors.
     pub fn anchor_count(env: Env) -> u32 {
-        Self::list_anchors(env).len()
+        let mut count = 0;
+        for anchor in storage::get_anchor_list(&env).iter() {
+            if storage::is_anchor(&env, &anchor) {
+                count += 1;
+            }
+        }
+        count
     }
 
     /// Removes `anchor` from the approved set. Admin only. Existing pool
