@@ -40,4 +40,7 @@ pub enum Error {
     NoPendingAdmin = 14,
     /// The caller is not the address proposed as the next administrator.
     NotPendingAdmin = 15,
+    /// The settlement has not yet reached its expiry ledger, or expiry is
+    /// disabled, so it cannot be reclaimed via `cancel_expired_settlement`.
+    SettlementNotExpired = 16,
 }

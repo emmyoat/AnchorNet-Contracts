@@ -426,6 +426,42 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Reclaims the reserved liquidity of a pending settlement that has sat
+    /// unexecuted past the configured
+    /// [`settlement_expiry_ledgers`](Self::settlement_expiry_ledgers) window,
+    /// returning it to the pool. Anyone may call this — it never moves value
+    /// anywhere other than back into the shared pool it came from — so no
+    /// authorization is required, allowing off-chain keepers to sweep timed
+    /// out settlements. Fails with [`Error::SettlementNotExpired`] if expiry
+    /// is disabled (zero) or the window has not yet elapsed, and with
+    /// [`Error::InvalidSettlementState`] if the settlement is not
+    /// [`SettlementStatus::Pending`].
+    pub fn cancel_expired_settlement(env: Env, id: u64) -> Result<(), Error> {
+        let mut settlement = storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)?;
+        if settlement.status != SettlementStatus::Pending {
+            return Err(Error::InvalidSettlementState);
+        }
+
+        let expiry = storage::get_settlement_expiry_ledgers(&env);
+        if expiry == 0 {
+            return Err(Error::SettlementNotExpired);
+        }
+        let expires_at = settlement.opened_at + expiry;
+        if env.ledger().sequence() < expires_at {
+            return Err(Error::SettlementNotExpired);
+        }
+
+        let mut pool = storage::get_pool(&env, &settlement.asset);
+        pool.total += settlement.amount;
+        storage::set_pool(&env, &settlement.asset, &pool);
+
+        settlement.status = SettlementStatus::Expired;
+        storage::set_settlement(&env, &settlement);
+
+        events::settlement_expired(&env, id);
+        Ok(())
+    }
+
     /// Returns the [`Pool`] for `asset`, or [`Error::PoolNotFound`] if no
     /// liquidity has ever been provided for it.
     pub fn pool(env: Env, asset: Symbol) -> Result<Pool, Error> {
