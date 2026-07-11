@@ -2,6 +2,37 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.6.0]
+
+### Added
+
+- **Operator role:** `set_operator` lets the admin appoint an operator that
+  may call `pause` / `unpause` on the admin's behalf, without gaining the
+  ability to change the fee, the admin, or any other admin-only setting.
+  `operator` reads the currently appointed operator; `is_operator` checks a
+  specific address. `pause` and `unpause` now take an explicit `caller`
+  argument — accepted if it is either the admin or the operator — since a
+  Soroban contract has no implicit sender to fall back on. A caller that is
+  neither now returns the (previously unused) `Error::NotAuthorized` instead
+  of a generic auth failure. Emits `("operator",)` on appointment.
+- **Minimum liquidity floor:** `set_min_liquidity` lets the admin configure,
+  per asset, a floor below which `withdraw_liquidity` and
+  `withdraw_all_liquidity` refuse to drain a pool (zero, the default,
+  disables the check). `min_liquidity` reads the configured floor. Emits
+  `("minliq", asset)` on change.
+- **Settlement status queries:** `list_settlements_by_status` pages through
+  settlements filtered by lifecycle state (`Pending` / `Executed` /
+  `Cancelled` / `Expired`), mirroring `list_settlements_by_anchor` and
+  `list_settlements_by_asset`. `is_settlement_expired` reports whether a
+  pending settlement has passed the configured expiry window without
+  mutating any state, letting off-chain keepers check before attempting a
+  `cancel_expired_settlement` call that might otherwise fail.
+- **Aggregate totals:** `total_liquidity_all` and `total_fees_accrued` sum
+  `total_liquidity` and `fees_accrued` respectively across every asset ever
+  funded (per `list_assets`), sparing callers from summing pages
+  themselves. `asset_count` reads the number of distinct assets ever
+  funded directly, mirroring `anchor_count`.
+
 ## [0.5.0]
 
 ### Added
