@@ -196,6 +196,26 @@ impl AnchornetContract {
         storage::get_settlement_expiry_ledgers(&env)
     }
 
+    /// Returns up to `limit` currently registered anchors that hold an active
+    /// fee waiver, in registration order, scanning the registration history
+    /// starting at list index `start` (0-based). Mirrors
+    /// [`list_anchors`](Self::list_anchors), but additionally filters out
+    /// anchors that are not currently exempt from settlement fees.
+    pub fn list_fee_waived_anchors(env: Env, start: u32, limit: u32) -> Vec<Address> {
+        let mut out = Vec::new(&env);
+        let list = storage::get_anchor_list(&env);
+        let total = list.len();
+        let mut idx = start;
+        while idx < total && (out.len() as u32) < limit {
+            let anchor = list.get(idx).unwrap();
+            if storage::is_anchor(&env, &anchor) && storage::is_fee_waived(&env, &anchor) {
+                out.push_back(anchor);
+            }
+            idx += 1;
+        }
+        out
+    }
+
     /// Collects the accrued protocol fees for `asset`, resetting the balance to
     /// zero and returning the collected amount. Admin only.
     pub fn collect_fees(env: Env, asset: Symbol) -> Result<i128, Error> {
