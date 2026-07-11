@@ -553,6 +553,31 @@ impl AnchornetContract {
         storage::get_pool(&env, &asset).total
     }
 
+    /// Returns the sum of [`total_liquidity`](Self::total_liquidity) across
+    /// every asset that has ever had liquidity provided (per
+    /// [`list_assets`](Self::list_assets)). The result mixes units across
+    /// assets, so it is only meaningful as a coarse, asset-agnostic activity
+    /// signal rather than a spendable amount.
+    pub fn total_liquidity_all(env: Env) -> i128 {
+        let mut total: i128 = 0;
+        for asset in storage::get_asset_list(&env).iter() {
+            total += storage::get_pool(&env, &asset).total;
+        }
+        total
+    }
+
+    /// Returns the sum of [`fees_accrued`](Self::fees_accrued) across every
+    /// asset that has ever had liquidity provided, i.e. the total protocol
+    /// fees outstanding across the whole contract awaiting
+    /// [`collect_fees`](Self::collect_fees).
+    pub fn total_fees_accrued(env: Env) -> i128 {
+        let mut total: i128 = 0;
+        for asset in storage::get_asset_list(&env).iter() {
+            total += storage::get_fees_accrued(&env, &asset);
+        }
+        total
+    }
+
     /// Returns `provider`'s liquidity balance in `asset` (zero if none).
     pub fn balance(env: Env, provider: Address, asset: Symbol) -> i128 {
         storage::get_balance(&env, &provider, &asset)
