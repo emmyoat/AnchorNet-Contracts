@@ -1449,6 +1449,111 @@ fn test_list_assets_pagination() {
 }
 
 #[test]
+fn test_min_liquidity_disabled_by_default() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    assert_eq!(client.min_liquidity(&asset), 0);
+
+    // With no floor configured, a full withdrawal is unaffected.
+    client.withdraw_liquidity(&anchor, &asset, &1_000);
+    assert_eq!(client.total_liquidity(&asset), 0);
+}
+
+#[test]
+fn test_set_min_liquidity_updates_value() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+
+    client.set_min_liquidity(&asset, &200);
+
+    assert_eq!(client.min_liquidity(&asset), 200);
+}
+
+#[test]
+fn test_set_min_liquidity_rejects_negative_floor() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+
+    let err = client
+        .try_set_min_liquidity(&asset, &-1)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidAmount);
+}
+
+#[test]
+fn test_withdraw_liquidity_blocked_below_min_liquidity_floor() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_min_liquidity(&asset, &700);
+
+    // Withdrawing 400 would leave 600, below the 700 floor.
+    let err = client
+        .try_withdraw_liquidity(&anchor, &asset, &400)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::BelowMinLiquidity);
+    // The rejected withdrawal must not have moved any liquidity.
+    assert_eq!(client.total_liquidity(&asset), 1_000);
+}
+
+#[test]
+fn test_withdraw_liquidity_allowed_at_exact_floor_boundary() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_min_liquidity(&asset, &600);
+
+    // Withdrawing 400 leaves exactly 600, which satisfies the floor.
+    client.withdraw_liquidity(&anchor, &asset, &400);
+    assert_eq!(client.total_liquidity(&asset), 600);
+}
+
+#[test]
+fn test_withdraw_all_liquidity_blocked_by_min_liquidity_floor() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_min_liquidity(&asset, &1);
+
+    let err = client
+        .try_withdraw_all_liquidity(&anchor, &asset)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::BelowMinLiquidity);
+    assert_eq!(client.total_liquidity(&asset), 1_000);
+}
+
+#[test]
+fn test_min_liquidity_floor_is_per_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &1_000);
+    client.set_min_liquidity(&usdc, &900);
+
+    // The floor on USDC does not affect withdrawals from the EURC pool.
+    client.withdraw_liquidity(&anchor, &eurc, &1_000);
+    assert_eq!(client.total_liquidity(&eurc), 0);
+
+    let err = client
+        .try_withdraw_liquidity(&anchor, &usdc, &200)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::BelowMinLiquidity);
+}
+
+#[test]
 fn test_asset_count_matches_list_assets_length() {
     let env = Env::default();
     env.mock_all_auths();
