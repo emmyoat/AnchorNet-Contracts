@@ -523,6 +523,27 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Returns `true` if the settlement with `id` is still
+    /// [`SettlementStatus::Pending`] and has passed the configured
+    /// [`settlement_expiry_ledgers`](Self::settlement_expiry_ledgers) window,
+    /// i.e. is currently reclaimable via
+    /// [`cancel_expired_settlement`](Self::cancel_expired_settlement).
+    /// Returns `false` while expiry is disabled (zero) or the settlement is
+    /// not pending. Reads only — never mutates state — so off-chain keepers
+    /// can check before attempting a reclaim rather than submitting a
+    /// transaction that might fail.
+    pub fn is_settlement_expired(env: Env, id: u64) -> Result<bool, Error> {
+        let settlement = storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)?;
+        if settlement.status != SettlementStatus::Pending {
+            return Ok(false);
+        }
+        let expiry = storage::get_settlement_expiry_ledgers(&env);
+        if expiry == 0 {
+            return Ok(false);
+        }
+        Ok(env.ledger().sequence() >= settlement.opened_at + expiry)
+    }
+
     /// Returns the [`Pool`] for `asset`, or [`Error::PoolNotFound`] if no
     /// liquidity has ever been provided for it.
     pub fn pool(env: Env, asset: Symbol) -> Result<Pool, Error> {
