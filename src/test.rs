@@ -946,6 +946,57 @@ fn test_list_anchors_pagination_skips_deregistered_without_counting() {
 }
 
 #[test]
+fn test_fee_waiver_exempts_anchor_from_settlement_fee() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+
+    client.set_fee_waiver(&anchor, &true);
+    assert!(client.is_fee_waived(&anchor));
+
+    let id = client.open_settlement(&anchor, &asset, &400);
+    assert_eq!(client.settlement(&id).fee, 0);
+}
+
+#[test]
+fn test_fee_waiver_toggle_off_restores_fee() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+
+    client.set_fee_waiver(&anchor, &true);
+    client.set_fee_waiver(&anchor, &false);
+    assert!(!client.is_fee_waived(&anchor));
+
+    let id = client.open_settlement(&anchor, &asset, &400);
+    assert_eq!(client.settlement(&id).fee, 4);
+}
+
+#[test]
+fn test_set_fee_waiver_rejects_unregistered_anchor() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let stranger = Address::generate(&env);
+
+    client.initialize(&admin);
+    let err = client
+        .try_set_fee_waiver(&stranger, &true)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AnchorNotRegistered);
+}
+
+#[test]
+fn test_fee_waiver_unset_by_default() {
+    let env = Env::default();
+    let (client, _admin, anchor, _asset) = funded(&env, 1_000);
+
+    assert!(!client.is_fee_waived(&anchor));
+}
+
+#[test]
 fn test_cancel_restores_liquidity_with_fee_set() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
