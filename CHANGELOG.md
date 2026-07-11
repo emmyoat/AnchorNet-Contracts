@@ -2,6 +2,35 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.5.0]
+
+### Added
+
+- **Settlement expiry:** `set_settlement_expiry_ledgers` lets the admin
+  configure a ledger window after which a still-pending settlement can be
+  reclaimed (zero, the default, disables expiry). `settlement_expiry_ledgers`
+  reads the current window. `cancel_expired_settlement` reclaims a timed-out
+  settlement's reserved liquidity back to the pool once the window has
+  elapsed; it requires no authorization since it can only ever return value
+  to the shared pool, allowing off-chain keepers to sweep stale settlements.
+  Settlements now record the ledger sequence they were opened at
+  (`opened_at`) and gain a new `Expired` status distinct from manual
+  cancellation. Emits `("expiry",)` on configuration change and
+  `("expired", id)` on reclaim.
+- **Fee waiver enumeration:** `list_fee_waived_anchors` pages through
+  registered anchors that currently hold an active fee waiver, mirroring
+  `list_anchors`.
+- **Asset enumeration:** `list_assets` pages through every asset that has
+  ever had liquidity provided, in first-use order, letting callers discover
+  which assets to query via `pool` or `collect_fees` without an off-chain
+  indexer.
+- **Full-balance exit:** `withdraw_all_liquidity` withdraws a provider's
+  entire balance in one call, sharing its pool/balance bookkeeping with
+  `withdraw_liquidity`.
+- **Batch anchor onboarding:** `register_anchors` registers a batch of
+  anchors atomically — if any address is already registered or repeated
+  within the batch, the whole call fails and no anchor is registered.
+
 ## [0.4.0]
 
 ### Added
