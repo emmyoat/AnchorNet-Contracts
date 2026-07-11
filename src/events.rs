@@ -101,3 +101,10 @@ pub fn settlement_expiry_changed(env: &Env, ledgers: u32) {
 pub fn settlement_expired(env: &Env, id: u64) {
     env.events().publish((symbol_short!("expired"), id), ());
 }
+
+/// Emitted when an asset's minimum liquidity floor changes. Topics:
+/// `("minliq", asset)`, data: `i128` floor.
+pub fn min_liquidity_changed(env: &Env, asset: &Symbol, floor: i128) {
+    env.events()
+        .publish((symbol_short!("minliq"), asset.clone()), floor);
+}
