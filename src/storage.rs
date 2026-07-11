@@ -44,6 +44,8 @@ pub enum DataKey {
     /// Number of ledgers after which a pending settlement may be reclaimed
     /// via `cancel_expired_settlement`. Zero disables expiry.
     SettlementExpiryLedgers,
+    /// Ordered list of every asset that has ever had liquidity provided.
+    AssetList,
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -164,6 +166,31 @@ pub fn remember_anchor(env: &Env, anchor: &Address) {
     }
     list.push_back(anchor.clone());
     let key = DataKey::AnchorList;
+    env.storage().persistent().set(&key, &list);
+    extend(env, &key);
+}
+
+/// Reads the ordered list of every asset that has ever had liquidity
+/// provided, in first-use order.
+pub fn get_asset_list(env: &Env) -> Vec<Symbol> {
+    let key = DataKey::AssetList;
+    match env.storage().persistent().get::<DataKey, Vec<Symbol>>(&key) {
+        Some(list) => {
+            extend(env, &key);
+            list
+        }
+        None => Vec::new(env),
+    }
+}
+
+/// Appends `asset` to the asset list if it is not already present.
+pub fn remember_asset(env: &Env, asset: &Symbol) {
+    let mut list = get_asset_list(env);
+    if list.contains(asset) {
+        return;
+    }
+    list.push_back(asset.clone());
+    let key = DataKey::AssetList;
     env.storage().persistent().set(&key, &list);
     extend(env, &key);
 }
