@@ -1160,6 +1160,79 @@ fn test_cancel_expired_settlement_rejects_unknown_id() {
 }
 
 #[test]
+fn test_list_fee_waived_anchors_filters_non_waived() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+    let a3 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.register_anchor(&a3);
+    client.set_fee_waiver(&a1, &true);
+    client.set_fee_waiver(&a3, &true);
+
+    let waived = client.list_fee_waived_anchors(&0, &10);
+    assert_eq!(waived.len(), 2);
+    assert_eq!(waived.get(0).unwrap(), a1);
+    assert_eq!(waived.get(1).unwrap(), a3);
+}
+
+#[test]
+fn test_list_fee_waived_anchors_excludes_deregistered() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.set_fee_waiver(&a1, &true);
+    client.set_fee_waiver(&a2, &true);
+    client.deregister_anchor(&a1);
+
+    // A waiver on a deregistered anchor is not surfaced by the enumeration,
+    // mirroring how `list_anchors` excludes deregistered anchors.
+    let waived = client.list_fee_waived_anchors(&0, &10);
+    assert_eq!(waived.len(), 1);
+    assert_eq!(waived.get(0).unwrap(), a2);
+}
+
+#[test]
+fn test_list_fee_waived_anchors_toggle_off_removed() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.set_fee_waiver(&anchor, &true);
+    assert_eq!(client.list_fee_waived_anchors(&0, &10).len(), 1);
+
+    client.set_fee_waiver(&anchor, &false);
+    assert_eq!(client.list_fee_waived_anchors(&0, &10).len(), 0);
+}
+
+#[test]
+fn test_list_fee_waived_anchors_empty_by_default() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    assert_eq!(client.list_fee_waived_anchors(&0, &10).len(), 0);
+}
+
+#[test]
 fn test_cancel_expired_settlement_rejects_double_reclaim() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
