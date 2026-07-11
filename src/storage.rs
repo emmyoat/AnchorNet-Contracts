@@ -39,6 +39,8 @@ pub enum DataKey {
     AnchorList,
     /// The address proposed to become the next administrator, if any.
     PendingAdmin,
+    /// Whether an anchor is exempt from protocol settlement fees.
+    FeeWaiver(Address),
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -231,6 +233,19 @@ pub fn get_settlement(env: &Env, id: u64) -> Option<Settlement> {
 pub fn set_settlement(env: &Env, settlement: &Settlement) {
     let key = DataKey::Settlement(settlement.id);
     env.storage().persistent().set(&key, settlement);
+    extend(env, &key);
+}
+
+/// Returns `true` if `anchor` is exempt from protocol settlement fees.
+pub fn is_fee_waived(env: &Env, anchor: &Address) -> bool {
+    let key = DataKey::FeeWaiver(anchor.clone());
+    env.storage().persistent().get(&key).unwrap_or(false)
+}
+
+/// Sets whether `anchor` is exempt from protocol settlement fees.
+pub fn set_fee_waiver(env: &Env, anchor: &Address, waived: bool) {
+    let key = DataKey::FeeWaiver(anchor.clone());
+    env.storage().persistent().set(&key, &waived);
     extend(env, &key);
 }
 
