@@ -1233,6 +1233,82 @@ fn test_list_fee_waived_anchors_empty_by_default() {
 }
 
 #[test]
+fn test_withdraw_all_liquidity_returns_full_balance() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let withdrawn = client.withdraw_all_liquidity(&anchor, &asset);
+
+    assert_eq!(withdrawn, 1_000);
+    assert_eq!(client.balance(&anchor, &asset), 0);
+    assert_eq!(client.total_liquidity(&asset), 0);
+}
+
+#[test]
+fn test_withdraw_all_liquidity_drops_provider_count() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.withdraw_all_liquidity(&anchor, &asset);
+
+    let pool = client.pool(&asset);
+    assert_eq!(pool.providers, 0);
+}
+
+#[test]
+fn test_withdraw_all_liquidity_only_affects_one_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &500);
+
+    client.withdraw_all_liquidity(&anchor, &usdc);
+
+    assert_eq!(client.balance(&anchor, &usdc), 0);
+    assert_eq!(client.balance(&anchor, &eurc), 500);
+}
+
+#[test]
+fn test_withdraw_all_liquidity_rejects_zero_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    let err = client
+        .try_withdraw_all_liquidity(&anchor, &usdc)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InsufficientLiquidity);
+}
+
+#[test]
+fn test_withdraw_all_liquidity_blocked_while_paused() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.pause();
+    let err = client
+        .try_withdraw_all_liquidity(&anchor, &asset)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::Paused);
+}
+
+#[test]
 fn test_list_assets_returns_ever_funded_in_first_use_order() {
     let env = Env::default();
     env.mock_all_auths();
