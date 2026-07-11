@@ -50,6 +50,9 @@ pub enum DataKey {
     /// leave the pool below this amount are rejected. Zero disables the
     /// check.
     MinLiquidity(Symbol),
+    /// The contract operator, an address the admin may appoint to pause and
+    /// unpause the contract without holding full admin rights.
+    Operator,
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -99,6 +102,22 @@ pub fn set_pending_admin(env: &Env, candidate: &Address) {
 /// Clears any proposed admin transfer.
 pub fn clear_pending_admin(env: &Env) {
     env.storage().instance().remove(&DataKey::PendingAdmin);
+}
+
+/// Returns `true` once an operator has been appointed.
+pub fn has_operator(env: &Env) -> bool {
+    env.storage().instance().has(&DataKey::Operator)
+}
+
+/// Reads the operator address. Panics if none is appointed — callers should
+/// guard with [`has_operator`] first.
+pub fn get_operator(env: &Env) -> Address {
+    env.storage().instance().get(&DataKey::Operator).unwrap()
+}
+
+/// Persists the operator address in instance storage.
+pub fn set_operator(env: &Env, operator: &Address) {
+    env.storage().instance().set(&DataKey::Operator, operator);
 }
 
 /// Returns `true` if the contract is currently paused.
