@@ -346,17 +346,31 @@ impl AnchornetContract {
             return Err(Error::InsufficientLiquidity);
         }
 
-        let mut pool = storage::get_pool(&env, &asset);
-        pool.total -= amount;
-        let remaining = prior - amount;
-        if remaining == 0 {
-            pool.providers -= 1;
-        }
-        storage::set_pool(&env, &asset, &pool);
-        storage::set_balance(&env, &provider, &asset, remaining);
-
-        events::liquidity_withdrawn(&env, &provider, &asset, amount);
+        Self::do_withdraw(&env, &provider, &asset, amount);
         Ok(())
+    }
+
+    /// Withdraws `provider`'s entire liquidity balance in `asset` in a single
+    /// call, returning the withdrawn amount. A convenience wrapper around
+    /// [`withdraw_liquidity`](Self::withdraw_liquidity) for providers exiting
+    /// a pool entirely, sparing them from having to first read their balance.
+    /// Fails with [`Error::InsufficientLiquidity`] if the provider's balance
+    /// is already zero.
+    pub fn withdraw_all_liquidity(
+        env: Env,
+        provider: Address,
+        asset: Symbol,
+    ) -> Result<i128, Error> {
+        provider.require_auth();
+        Self::require_not_paused(&env)?;
+
+        let amount = storage::get_balance(&env, &provider, &asset);
+        if amount == 0 {
+            return Err(Error::InsufficientLiquidity);
+        }
+
+        Self::do_withdraw(&env, &provider, &asset, amount);
+        Ok(amount)
     }
 
     /// Opens a settlement that reserves `amount` of `asset` liquidity for the
@@ -617,6 +631,24 @@ impl AnchornetContract {
             return Err(Error::Paused);
         }
         Ok(())
+    }
+
+    /// Moves `amount` of `asset` out of `provider`'s balance and the pool
+    /// total, dropping the provider count if the balance reaches zero.
+    /// Callers must first validate that `amount` is positive and does not
+    /// exceed the provider's balance.
+    fn do_withdraw(env: &Env, provider: &Address, asset: &Symbol, amount: i128) {
+        let prior = storage::get_balance(env, provider, asset);
+        let mut pool = storage::get_pool(env, asset);
+        pool.total -= amount;
+        let remaining = prior - amount;
+        if remaining == 0 {
+            pool.providers -= 1;
+        }
+        storage::set_pool(env, asset, &pool);
+        storage::set_balance(env, provider, asset, remaining);
+
+        events::liquidity_withdrawn(env, provider, asset, amount);
     }
 }
 
