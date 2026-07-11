@@ -180,6 +180,22 @@ impl AnchornetContract {
         storage::is_fee_waived(&env, &anchor)
     }
 
+    /// Sets the number of ledgers a pending settlement may remain open before
+    /// it can be reclaimed via
+    /// [`cancel_expired_settlement`](Self::cancel_expired_settlement). A
+    /// value of zero (the default) disables expiry entirely. Admin only.
+    pub fn set_settlement_expiry_ledgers(env: Env, ledgers: u32) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::set_settlement_expiry_ledgers(&env, ledgers);
+        events::settlement_expiry_changed(&env, ledgers);
+        Ok(())
+    }
+
+    /// Returns the settlement expiry window in ledgers (zero if disabled).
+    pub fn settlement_expiry_ledgers(env: Env) -> u32 {
+        storage::get_settlement_expiry_ledgers(&env)
+    }
+
     /// Collects the accrued protocol fees for `asset`, resetting the balance to
     /// zero and returning the collected amount. Admin only.
     pub fn collect_fees(env: Env, asset: Symbol) -> Result<i128, Error> {
