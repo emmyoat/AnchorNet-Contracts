@@ -1449,6 +1449,56 @@ fn test_list_assets_pagination() {
 }
 
 #[test]
+fn test_total_liquidity_all_sums_across_assets() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    assert_eq!(client.total_liquidity_all(), 0);
+
+    client.provide_liquidity(&anchor, &usdc, &600);
+    client.provide_liquidity(&anchor, &eurc, &400);
+
+    assert_eq!(client.total_liquidity_all(), 1_000);
+
+    client.withdraw_liquidity(&anchor, &usdc, &100);
+    assert_eq!(client.total_liquidity_all(), 900);
+}
+
+#[test]
+fn test_total_fees_accrued_sums_across_assets() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.set_fee(&100); // 1%
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &1_000);
+    assert_eq!(client.total_fees_accrued(), 0);
+
+    let s1 = client.open_settlement(&anchor, &usdc, &400);
+    let s2 = client.open_settlement(&anchor, &eurc, &200);
+    client.execute_settlement(&s1);
+    client.execute_settlement(&s2);
+
+    // 1% of 400 + 1% of 200 = 4 + 2 = 6, summed across both assets.
+    assert_eq!(client.total_fees_accrued(), 6);
+
+    client.collect_fees(&usdc);
+    assert_eq!(client.total_fees_accrued(), 2);
+}
+
+#[test]
 fn test_list_settlements_by_status_filters_lifecycle_state() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
