@@ -1011,3 +1011,47 @@ fn test_cancel_restores_liquidity_with_fee_set() {
     assert_eq!(client.total_liquidity(&asset), 1_000);
     assert_eq!(client.fees_accrued(&asset), 0);
 }
+
+#[test]
+#[should_panic]
+fn test_provide_liquidity_overflow_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    // The pool total already sits at `i128::MAX`; adding any further
+    // liquidity must overflow rather than silently wrap, relying on the
+    // crate-wide `overflow-checks = true` guarantee.
+    client.provide_liquidity(&anchor, &usdc, &i128::MAX);
+    client.provide_liquidity(&anchor, &usdc, &1);
+}
+
+#[test]
+#[should_panic]
+fn test_quote_fee_overflow_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    client.set_fee(&100); // 1%
+                          // `amount * fee_bps` overflows i128 long before the division by the bps
+                          // denominator brings it back into range.
+    client.quote_fee(&i128::MAX);
+}
+
+#[test]
+#[should_panic]
+fn test_open_settlement_fee_overflow_panics() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, i128::MAX);
+    client.set_fee(&100); // 1%
+
+    // Reserving close to `i128::MAX` liquidity overflows while computing the
+    // settlement fee (`amount * fee_bps`).
+    client.open_settlement(&anchor, &asset, &i128::MAX);
+}
