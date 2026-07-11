@@ -43,4 +43,7 @@ pub enum Error {
     /// The settlement has not yet reached its expiry ledger, or expiry is
     /// disabled, so it cannot be reclaimed via `cancel_expired_settlement`.
     SettlementNotExpired = 16,
+    /// The withdrawal would leave the pool below its configured minimum
+    /// liquidity floor.
+    BelowMinLiquidity = 17,
 }

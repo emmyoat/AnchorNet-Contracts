@@ -351,10 +351,34 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Sets the minimum liquidity floor for `asset`. Once set, any
+    /// [`withdraw_liquidity`](Self::withdraw_liquidity) or
+    /// [`withdraw_all_liquidity`](Self::withdraw_all_liquidity) call that
+    /// would leave the pool's total below `floor` fails with
+    /// [`Error::BelowMinLiquidity`]. A floor of zero (the default) disables
+    /// the check entirely. Admin only.
+    pub fn set_min_liquidity(env: Env, asset: Symbol, floor: i128) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if floor < 0 {
+            return Err(Error::InvalidAmount);
+        }
+        storage::set_min_liquidity(&env, &asset, floor);
+        events::min_liquidity_changed(&env, &asset, floor);
+        Ok(())
+    }
+
+    /// Returns the minimum liquidity floor configured for `asset` (zero if
+    /// disabled).
+    pub fn min_liquidity(env: Env, asset: Symbol) -> i128 {
+        storage::get_min_liquidity(&env, &asset)
+    }
+
     /// Withdraws `amount` of liquidity in `asset` back to `provider`.
     ///
     /// Requires authorization from `provider` and fails with
-    /// [`Error::InsufficientLiquidity`] if the provider's balance is too low.
+    /// [`Error::InsufficientLiquidity`] if the provider's balance is too low,
+    /// or [`Error::BelowMinLiquidity`] if it would leave the pool below its
+    /// configured [`min_liquidity`](Self::min_liquidity) floor.
     pub fn withdraw_liquidity(
         env: Env,
         provider: Address,
@@ -371,6 +395,7 @@ impl AnchornetContract {
         if prior < amount {
             return Err(Error::InsufficientLiquidity);
         }
+        Self::require_min_liquidity(&env, &asset, amount)?;
 
         Self::do_withdraw(&env, &provider, &asset, amount);
         Ok(())
@@ -381,7 +406,9 @@ impl AnchornetContract {
     /// [`withdraw_liquidity`](Self::withdraw_liquidity) for providers exiting
     /// a pool entirely, sparing them from having to first read their balance.
     /// Fails with [`Error::InsufficientLiquidity`] if the provider's balance
-    /// is already zero.
+    /// is already zero, or [`Error::BelowMinLiquidity`] if it would leave the
+    /// pool below its configured [`min_liquidity`](Self::min_liquidity)
+    /// floor.
     pub fn withdraw_all_liquidity(
         env: Env,
         provider: Address,
@@ -394,6 +421,7 @@ impl AnchornetContract {
         if amount == 0 {
             return Err(Error::InsufficientLiquidity);
         }
+        Self::require_min_liquidity(&env, &asset, amount)?;
 
         Self::do_withdraw(&env, &provider, &asset, amount);
         Ok(amount)
@@ -737,6 +765,21 @@ impl AnchornetContract {
     fn require_not_paused(env: &Env) -> Result<(), Error> {
         if storage::is_paused(env) {
             return Err(Error::Paused);
+        }
+        Ok(())
+    }
+
+    /// Requires that withdrawing `amount` from `asset`'s pool would not leave
+    /// its total below the configured minimum liquidity floor. A floor of
+    /// zero (the default) always passes.
+    fn require_min_liquidity(env: &Env, asset: &Symbol, amount: i128) -> Result<(), Error> {
+        let floor = storage::get_min_liquidity(env, asset);
+        if floor == 0 {
+            return Ok(());
+        }
+        let pool = storage::get_pool(env, asset);
+        if pool.total - amount < floor {
+            return Err(Error::BelowMinLiquidity);
         }
         Ok(())
     }
