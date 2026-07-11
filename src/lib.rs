@@ -155,6 +155,25 @@ impl AnchornetContract {
         Ok(amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR)
     }
 
+    /// Grants or revokes a protocol fee waiver for `anchor`. While waived,
+    /// settlements opened by `anchor` are charged zero fee regardless of the
+    /// configured rate. Admin only; `anchor` must be a registered anchor.
+    pub fn set_fee_waiver(env: Env, anchor: Address, waived: bool) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if !storage::is_anchor(&env, &anchor) {
+            return Err(Error::AnchorNotRegistered);
+        }
+        storage::set_fee_waiver(&env, &anchor, waived);
+        events::fee_waiver_changed(&env, &anchor, waived);
+        Ok(())
+    }
+
+    /// Returns `true` if `anchor` is currently exempt from protocol
+    /// settlement fees.
+    pub fn is_fee_waived(env: Env, anchor: Address) -> bool {
+        storage::is_fee_waived(&env, &anchor)
+    }
+
     /// Collects the accrued protocol fees for `asset`, resetting the balance to
     /// zero and returning the collected amount. Admin only.
     pub fn collect_fees(env: Env, asset: Symbol) -> Result<i128, Error> {
@@ -322,7 +341,11 @@ impl AnchornetContract {
         pool.total -= amount;
         storage::set_pool(&env, &asset, &pool);
 
-        let fee = amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR;
+        let fee = if storage::is_fee_waived(&env, &anchor) {
+            0
+        } else {
+            amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR
+        };
         let id = storage::get_settlement_count(&env) + 1;
         storage::set_settlement_count(&env, id);
         storage::set_settlement(
