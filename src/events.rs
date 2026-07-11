@@ -108,3 +108,9 @@ pub fn min_liquidity_changed(env: &Env, asset: &Symbol, floor: i128) {
     env.events()
         .publish((symbol_short!("minliq"), asset.clone()), floor);
 }
+
+/// Emitted when the operator address changes. Topics: `("operator",)`.
+pub fn operator_changed(env: &Env, operator: &Address) {
+    env.events()
+        .publish((symbol_short!("operator"),), operator.clone());
+}
