@@ -1449,6 +1449,35 @@ fn test_list_assets_pagination() {
 }
 
 #[test]
+fn test_asset_count_matches_list_assets_length() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    assert_eq!(client.asset_count(), 0);
+
+    client.provide_liquidity(&anchor, &usdc, &100);
+    assert_eq!(client.asset_count(), 1);
+
+    client.provide_liquidity(&anchor, &eurc, &100);
+    assert_eq!(client.asset_count(), 2);
+
+    // A full withdrawal empties the pool but does not remove the asset from
+    // the enumeration, so the count is unaffected.
+    client.withdraw_all_liquidity(&anchor, &usdc);
+    assert_eq!(client.asset_count(), 2);
+
+    // Providing again for an already-seen asset does not double count it.
+    client.provide_liquidity(&anchor, &usdc, &50);
+    assert_eq!(client.asset_count(), 2);
+}
+
+#[test]
 fn test_is_settlement_expired_false_while_disabled() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
