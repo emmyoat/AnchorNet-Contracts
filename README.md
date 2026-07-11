@@ -54,7 +54,7 @@ state.
 | `pending_admin()` | – | Read the proposed next administrator, if any |
 | `register_anchor(anchor)` | admin | Approve an anchor as a liquidity provider |
 | `is_anchor(anchor)` | – | Check whether an address is registered |
-| `list_anchors()` | – | Enumerate currently registered anchors |
+| `list_anchors(start, limit)` | – | Page through currently registered anchors |
 | `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
@@ -73,6 +73,8 @@ state.
 | `fee()` / `quote_fee(amount)` | – | Read the fee rate / preview a fee |
 | `collect_fees(asset)` | admin | Collect accrued protocol fees for an asset |
 | `fees_accrued(asset)` | – | Read uncollected fees for an asset |
+| `set_fee_waiver(anchor, waived)` | admin | Grant or revoke a fee waiver for a registered anchor |
+| `is_fee_waived(anchor)` | – | Check whether an anchor is exempt from settlement fees |
 | `version()` | – | Read the contract interface version |
 
 ### Settlement
@@ -86,6 +88,7 @@ state.
 | `settlement_count()` | – | Read the number of settlements |
 | `list_settlements(start, limit)` | – | Page through settlements |
 | `list_settlements_by_anchor(anchor, start, limit)` | – | Page through settlements opened by one anchor |
+| `list_settlements_by_asset(asset, start, limit)` | – | Page through settlements in one asset |
 
 ### Events
 
@@ -97,9 +100,16 @@ state.
 - `("withdraw", provider, asset)` – liquidity withdrawn
 - `("paused",)` – paused flag changed
 - `("fee",)` – protocol fee changed
+- `("waiver", anchor)` – anchor fee waiver granted or revoked
 - `("settle", anchor, asset)` – settlement opened
 - `("executed", id)` / `("cancelled", id)` – settlement finalized / cancelled
 - `("collect", asset)` – fees collected
+
+## Contract metadata
+
+The compiled wasm embeds `Name` and `Description` entries (via
+`contractmeta!`) so tooling that inspects the deployed contract can identify
+it without an off-chain registry.
 
 ## Commands
 
