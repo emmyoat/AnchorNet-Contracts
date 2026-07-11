@@ -63,19 +63,27 @@ state.
 | `deregister_anchor(anchor)` | admin | Remove an anchor from the approved set |
 | `pool(asset)` | – | Read aggregate pool state |
 | `total_liquidity(asset)` | – | Read total liquidity for an asset |
+| `total_liquidity_all()` | – | Read the sum of total liquidity across every asset ever funded |
 | `balance(provider, asset)` | – | Read a provider's balance |
 | `list_assets(start, limit)` | – | Page through every asset that has ever had liquidity provided |
+| `asset_count()` | – | Read the number of distinct assets that have ever had liquidity provided |
+| `set_min_liquidity(asset, floor)` | admin | Set the minimum liquidity floor an asset's pool may not be withdrawn below (0 disables) |
+| `min_liquidity(asset)` | – | Read the minimum liquidity floor configured for an asset |
 
 ### Admin & lifecycle
 
 | Function | Auth | Description |
 |----------|------|-------------|
-| `pause()` / `unpause()` | admin | Halt or resume liquidity & settlement mutations |
+| `pause(caller)` / `unpause(caller)` | admin or operator | Halt or resume liquidity & settlement mutations |
 | `is_paused()` | – | Read the paused flag |
+| `set_operator(operator)` | admin | Appoint an operator that may pause/unpause but cannot change fees or admin |
+| `operator()` | – | Read the currently appointed operator |
+| `is_operator(address)` | – | Check whether an address is the currently appointed operator |
 | `set_fee(bps)` | admin | Set the protocol fee in basis points (max 1000) |
 | `fee()` / `quote_fee(amount)` | – | Read the fee rate / preview a fee |
 | `collect_fees(asset)` | admin | Collect accrued protocol fees for an asset |
 | `fees_accrued(asset)` | – | Read uncollected fees for an asset |
+| `total_fees_accrued()` | – | Read the sum of uncollected fees across every asset ever funded |
 | `set_fee_waiver(anchor, waived)` | admin | Grant or revoke a fee waiver for a registered anchor |
 | `is_fee_waived(anchor)` | – | Check whether an anchor is exempt from settlement fees |
 | `list_fee_waived_anchors(start, limit)` | – | Page through currently registered anchors with an active fee waiver |
@@ -91,16 +99,24 @@ state.
 | `cancel_expired_settlement(id)` | – | Reclaim a timed-out pending settlement's liquidity to the pool |
 | `set_settlement_expiry_ledgers(ledgers)` | admin | Set the ledger window after which a pending settlement may be reclaimed (0 disables) |
 | `settlement_expiry_ledgers()` | – | Read the settlement expiry window in ledgers |
+| `is_settlement_expired(id)` | – | Check whether a pending settlement has passed the expiry window, without reclaiming it |
 | `settlement(id)` | – | Read a settlement record |
 | `settlement_count()` | – | Read the number of settlements |
 | `list_settlements(start, limit)` | – | Page through settlements |
 | `list_settlements_by_anchor(anchor, start, limit)` | – | Page through settlements opened by one anchor |
 | `list_settlements_by_asset(asset, start, limit)` | – | Page through settlements in one asset |
+| `list_settlements_by_status(status, start, limit)` | – | Page through settlements in a given lifecycle state |
 
 `cancel_expired_settlement` requires no authorization: it only ever returns
 liquidity to the shared pool it was reserved from, never to an external
 party, so anyone (including an off-chain keeper) may call it once a pending
 settlement has passed the configured expiry window.
+
+`pause` and `unpause` take an explicit `caller` argument (Soroban contracts
+have no implicit sender) that must be either the admin or the appointed
+operator; the operator role is scoped to this one lifecycle switch and
+carries no ability to change the fee, the admin, or any other admin-only
+setting.
 
 ### Events
 
@@ -118,6 +134,8 @@ settlement has passed the configured expiry window.
 - `("expired", id)` – settlement reclaimed after timing out
 - `("expiry",)` – settlement expiry window changed
 - `("collect", asset)` – fees collected
+- `("minliq", asset)` – asset minimum liquidity floor changed
+- `("operator",)` – operator appointed or replaced
 
 ## Contract metadata
 
