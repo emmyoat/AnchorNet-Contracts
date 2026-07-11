@@ -319,6 +319,7 @@ impl AnchornetContract {
         pool.total += amount;
         storage::set_pool(&env, &asset, &pool);
         storage::set_balance(&env, &provider, &asset, prior + amount);
+        storage::remember_asset(&env, &asset);
 
         events::liquidity_provided(&env, &provider, &asset, amount);
         Ok(())
@@ -489,6 +490,22 @@ impl AnchornetContract {
             return Err(Error::PoolNotFound);
         }
         Ok(storage::get_pool(&env, &asset))
+    }
+
+    /// Returns up to `limit` assets that have ever had liquidity provided, in
+    /// first-use order, starting at list index `start` (0-based). Useful for
+    /// discovering which assets to query via [`pool`](Self::pool) or
+    /// [`collect_fees`](Self::collect_fees) without an off-chain indexer.
+    pub fn list_assets(env: Env, start: u32, limit: u32) -> Vec<Symbol> {
+        let mut out = Vec::new(&env);
+        let list = storage::get_asset_list(&env);
+        let total = list.len();
+        let mut idx = start;
+        while idx < total && (out.len() as u32) < limit {
+            out.push_back(list.get(idx).unwrap());
+            idx += 1;
+        }
+        out
     }
 
     /// Returns the total liquidity available in `asset` across all providers.
