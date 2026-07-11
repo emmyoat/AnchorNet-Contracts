@@ -1449,6 +1449,115 @@ fn test_list_assets_pagination() {
 }
 
 #[test]
+fn test_operator_unset_by_default() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    client.initialize(&admin);
+
+    let err = client.try_operator().err().unwrap().unwrap();
+    assert_eq!(err, Error::NoOperator);
+    assert!(!client.is_operator(&admin));
+}
+
+#[test]
+fn test_set_operator_updates_value() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let operator = Address::generate(&env);
+    client.initialize(&admin);
+
+    client.set_operator(&operator);
+
+    assert_eq!(client.operator(), operator);
+    assert!(client.is_operator(&operator));
+    assert!(!client.is_operator(&admin));
+}
+
+#[test]
+fn test_operator_can_pause_and_unpause() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let operator = Address::generate(&env);
+    client.initialize(&admin);
+    client.set_operator(&operator);
+
+    client.pause(&operator);
+    assert!(client.is_paused());
+
+    client.unpause(&operator);
+    assert!(!client.is_paused());
+}
+
+#[test]
+fn test_admin_can_still_pause_with_operator_appointed() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let operator = Address::generate(&env);
+    client.initialize(&admin);
+    client.set_operator(&operator);
+
+    client.pause(&admin);
+    assert!(client.is_paused());
+}
+
+#[test]
+fn test_stranger_cannot_pause() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let operator = Address::generate(&env);
+    let stranger = Address::generate(&env);
+    client.initialize(&admin);
+    client.set_operator(&operator);
+
+    let err = client.try_pause(&stranger).err().unwrap().unwrap();
+    assert_eq!(err, Error::NotAuthorized);
+    assert!(!client.is_paused());
+}
+
+#[test]
+#[should_panic]
+fn test_operator_cannot_set_fee() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let operator = Address::generate(&env);
+    client.initialize(&admin);
+    client.set_operator(&operator);
+
+    // The operator role only extends to pause/unpause; admin-only mutations
+    // like `set_fee` still require the real admin's own signature, which is
+    // unaffected by an operator being appointed. With every mocked auth
+    // cleared, `set_fee` has no way to authenticate and must panic rather
+    // than let the operator (or anyone else) stand in for the admin.
+    env.set_auths(&[]);
+    client.set_fee(&25);
+}
+
+#[test]
+fn test_replacing_operator_revokes_prior_operator() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let first = Address::generate(&env);
+    let second = Address::generate(&env);
+    client.initialize(&admin);
+
+    client.set_operator(&first);
+    client.set_operator(&second);
+
+    assert!(!client.is_operator(&first));
+    assert!(client.is_operator(&second));
+
+    let err = client.try_pause(&first).err().unwrap().unwrap();
+    assert_eq!(err, Error::NotAuthorized);
+}
+
+#[test]
 fn test_min_liquidity_disabled_by_default() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
