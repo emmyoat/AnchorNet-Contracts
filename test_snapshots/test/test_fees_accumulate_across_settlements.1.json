@@ -396,6 +396,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "opened_at"
+                    },
+                    "val": {
+                      "u32": 0
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "status"
                     },
                     "val": {
@@ -472,6 +480,14 @@
                     },
                     "val": {
                       "u64": "2"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "opened_at"
+                    },
+                    "val": {
+                      "u32": 0
                     }
                   },
                   {

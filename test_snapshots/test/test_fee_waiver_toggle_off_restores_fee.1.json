@@ -378,6 +378,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "opened_at"
+                    },
+                    "val": {
+                      "u32": 0
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "status"
                     },
                     "val": {

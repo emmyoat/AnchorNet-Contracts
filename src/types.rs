@@ -38,6 +38,9 @@ pub enum SettlementStatus {
     Executed,
     /// The settlement was cancelled and reserved liquidity returned to the pool.
     Cancelled,
+    /// The settlement timed out before execution and its reserved liquidity
+    /// was reclaimed back to the pool via `cancel_expired_settlement`.
+    Expired,
 }
 
 /// A request to draw `amount` of `asset` liquidity for cross-anchor settlement.
@@ -56,4 +59,7 @@ pub struct Settlement {
     pub fee: i128,
     /// Current lifecycle state.
     pub status: SettlementStatus,
+    /// Ledger sequence number at which the settlement was opened, used to
+    /// determine expiry via the contract-wide settlement expiry window.
+    pub opened_at: u32,
 }

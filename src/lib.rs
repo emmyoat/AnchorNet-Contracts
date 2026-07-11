@@ -363,6 +363,7 @@ impl AnchornetContract {
                 amount,
                 fee,
                 status: SettlementStatus::Pending,
+                opened_at: env.ledger().sequence(),
             },
         );
 
