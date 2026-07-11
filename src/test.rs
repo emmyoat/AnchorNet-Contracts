@@ -895,6 +895,57 @@ fn test_list_anchors_reflects_reregistration() {
 }
 
 #[test]
+fn test_list_anchors_pagination() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+    let a3 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.register_anchor(&a3);
+
+    let page = client.list_anchors(&0, &2);
+    assert_eq!(page.len(), 2);
+    assert_eq!(page.get(0).unwrap(), a1);
+    assert_eq!(page.get(1).unwrap(), a2);
+
+    let rest = client.list_anchors(&2, &10);
+    assert_eq!(rest.len(), 1);
+    assert_eq!(rest.get(0).unwrap(), a3);
+
+    let none = client.list_anchors(&3, &10);
+    assert_eq!(none.len(), 0);
+}
+
+#[test]
+fn test_list_anchors_pagination_skips_deregistered_without_counting() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+    let a3 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+    client.register_anchor(&a2);
+    client.register_anchor(&a3);
+    client.deregister_anchor(&a2);
+
+    // Scanning from list index 0 with a limit of 2 must skip the
+    // deregistered a2 (list index 1) without counting it toward the limit,
+    // so both a1 and a3 are still returned.
+    let page = client.list_anchors(&0, &2);
+    assert_eq!(page.len(), 2);
+    assert_eq!(page.get(0).unwrap(), a1);
+    assert_eq!(page.get(1).unwrap(), a3);
+}
+
+#[test]
 fn test_cancel_restores_liquidity_with_fee_set() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
