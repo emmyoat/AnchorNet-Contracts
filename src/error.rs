@@ -46,4 +46,6 @@ pub enum Error {
     /// The withdrawal would leave the pool below its configured minimum
     /// liquidity floor.
     BelowMinLiquidity = 17,
+    /// No operator has been appointed.
+    NoOperator = 18,
 }

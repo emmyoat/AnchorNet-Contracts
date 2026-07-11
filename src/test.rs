@@ -279,19 +279,19 @@ fn test_pause_and_unpause() {
     client.initialize(&admin);
     assert!(!client.is_paused());
 
-    client.pause();
+    client.pause(&admin);
     assert!(client.is_paused());
 
-    client.unpause();
+    client.unpause(&admin);
     assert!(!client.is_paused());
 }
 
 #[test]
 fn test_paused_blocks_provide_and_withdraw() {
     let env = Env::default();
-    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let (client, admin, anchor, asset) = funded(&env, 1_000);
 
-    client.pause();
+    client.pause(&admin);
 
     let provide = client
         .try_provide_liquidity(&anchor, &asset, &100)
@@ -536,9 +536,9 @@ fn test_settlement_ids_increment() {
 #[test]
 fn test_paused_blocks_open_settlement() {
     let env = Env::default();
-    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let (client, admin, anchor, asset) = funded(&env, 1_000);
 
-    client.pause();
+    client.pause(&admin);
     let err = client
         .try_open_settlement(&anchor, &asset, &100)
         .err()
@@ -1377,9 +1377,9 @@ fn test_withdraw_all_liquidity_rejects_zero_balance() {
 #[test]
 fn test_withdraw_all_liquidity_blocked_while_paused() {
     let env = Env::default();
-    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let (client, admin, anchor, asset) = funded(&env, 1_000);
 
-    client.pause();
+    client.pause(&admin);
     let err = client
         .try_withdraw_all_liquidity(&anchor, &asset)
         .err()

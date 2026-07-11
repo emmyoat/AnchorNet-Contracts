@@ -114,18 +114,47 @@ impl AnchornetContract {
         Ok(())
     }
 
-    /// Pauses the contract, blocking liquidity and settlement mutations.
+    /// Appoints `operator` as the contract operator, a role that may call
+    /// [`pause`](Self::pause) and [`unpause`](Self::unpause) on the admin's
+    /// behalf but cannot change the fee, the admin, or any other admin-only
+    /// setting. Calling again replaces any previously appointed operator.
     /// Admin only.
-    pub fn pause(env: Env) -> Result<(), Error> {
+    pub fn set_operator(env: Env, operator: Address) -> Result<(), Error> {
         Self::require_admin(&env)?;
+        storage::set_operator(&env, &operator);
+        events::operator_changed(&env, &operator);
+        Ok(())
+    }
+
+    /// Returns the currently appointed operator, or [`Error::NoOperator`] if
+    /// none has been appointed.
+    pub fn operator(env: Env) -> Result<Address, Error> {
+        if !storage::has_operator(&env) {
+            return Err(Error::NoOperator);
+        }
+        Ok(storage::get_operator(&env))
+    }
+
+    /// Returns `true` if `address` is the currently appointed operator.
+    pub fn is_operator(env: Env, address: Address) -> bool {
+        storage::has_operator(&env) && storage::get_operator(&env) == address
+    }
+
+    /// Pauses the contract, blocking liquidity and settlement mutations.
+    /// Requires authorization from `caller`, who must be either the admin or
+    /// the appointed [`operator`](Self::operator).
+    pub fn pause(env: Env, caller: Address) -> Result<(), Error> {
+        Self::require_admin_or_operator(&env, &caller)?;
         storage::set_paused(&env, true);
         events::paused_changed(&env, true);
         Ok(())
     }
 
-    /// Resumes the contract after a pause. Admin only.
-    pub fn unpause(env: Env) -> Result<(), Error> {
-        Self::require_admin(&env)?;
+    /// Resumes the contract after a pause. Requires authorization from
+    /// `caller`, who must be either the admin or the appointed
+    /// [`operator`](Self::operator).
+    pub fn unpause(env: Env, caller: Address) -> Result<(), Error> {
+        Self::require_admin_or_operator(&env, &caller)?;
         storage::set_paused(&env, false);
         events::paused_changed(&env, false);
         Ok(())
@@ -758,6 +787,24 @@ impl AnchornetContract {
         }
         let admin = storage::get_admin(env);
         admin.require_auth();
+        Ok(())
+    }
+
+    /// Requires the call to be authorized by `caller`, who must be either the
+    /// current administrator or the appointed operator. Unlike
+    /// [`require_admin`](Self::require_admin), this takes an explicit caller
+    /// since Soroban contracts have no implicit "sender" and the two
+    /// eligible identities must be told apart before demanding a signature.
+    fn require_admin_or_operator(env: &Env, caller: &Address) -> Result<(), Error> {
+        if !storage::has_admin(env) {
+            return Err(Error::NotInitialized);
+        }
+        let is_admin = *caller == storage::get_admin(env);
+        let is_operator = storage::has_operator(env) && *caller == storage::get_operator(env);
+        if !is_admin && !is_operator {
+            return Err(Error::NotAuthorized);
+        }
+        caller.require_auth();
         Ok(())
     }
 
