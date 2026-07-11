@@ -2,6 +2,28 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.4.0]
+
+### Added
+
+- **Per-asset settlement queries:** `list_settlements_by_asset` pages through
+  the settlements opened in a single asset, mirroring the existing
+  `list_settlements_by_anchor`.
+- **Anchor pagination:** `list_anchors` now takes `start` / `limit` and pages
+  through the registration history, skipping deregistered anchors without
+  counting them toward `limit`, mirroring how `list_settlements` already
+  paginates. `anchor_count` is unaffected and still reports the full active
+  count.
+- **Fee waivers:** `set_fee_waiver` lets the admin exempt a specific
+  registered anchor from protocol settlement fees; `is_fee_waived` reads the
+  flag. Waived anchors are charged zero fee in `open_settlement` regardless of
+  the configured rate. Emits a `("waiver", anchor)` event on change.
+- **Contract metadata:** the compiled wasm now embeds `Name` and
+  `Description` entries via `contractmeta!`.
+- **Tests:** boundary coverage proving `provide_liquidity`, `quote_fee`, and
+  `open_settlement` panic on i128 overflow rather than silently wrapping,
+  relying on the crate's `overflow-checks = true` profile setting.
+
 ## [0.3.0]
 
 ### Added
