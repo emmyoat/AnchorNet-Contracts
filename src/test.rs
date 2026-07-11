@@ -1233,6 +1233,86 @@ fn test_list_fee_waived_anchors_empty_by_default() {
 }
 
 #[test]
+fn test_register_anchors_batch_registers_all() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+    let a3 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchors(&vec![&env, a1.clone(), a2.clone(), a3.clone()]);
+
+    assert!(client.is_anchor(&a1));
+    assert!(client.is_anchor(&a2));
+    assert!(client.is_anchor(&a3));
+    assert_eq!(client.anchor_count(), 3);
+    // Batch registration also appears in enumeration order, like individual
+    // `register_anchor` calls.
+    let anchors = client.list_anchors(&0, &10);
+    assert_eq!(anchors.get(0).unwrap(), a1);
+    assert_eq!(anchors.get(1).unwrap(), a2);
+    assert_eq!(anchors.get(2).unwrap(), a3);
+}
+
+#[test]
+fn test_register_anchors_batch_rejects_duplicate_within_batch() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+
+    client.initialize(&admin);
+    let err = client
+        .try_register_anchors(&vec![&env, a1.clone(), a2.clone(), a1.clone()])
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::AnchorAlreadyRegistered);
+    // The whole batch is rejected; neither address is registered.
+    assert!(!client.is_anchor(&a1));
+    assert!(!client.is_anchor(&a2));
+    assert_eq!(client.anchor_count(), 0);
+}
+
+#[test]
+fn test_register_anchors_batch_rejects_already_registered() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let a1 = Address::generate(&env);
+    let a2 = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.register_anchor(&a1);
+
+    // a1 is already registered, so the batch fails entirely even though a2
+    // is new.
+    let err = client
+        .try_register_anchors(&vec![&env, a2.clone(), a1.clone()])
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AnchorAlreadyRegistered);
+    assert!(!client.is_anchor(&a2));
+}
+
+#[test]
+fn test_register_anchors_batch_empty_is_noop() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    client.register_anchors(&vec![&env]);
+
+    assert_eq!(client.anchor_count(), 0);
+}
+
+#[test]
 fn test_withdraw_all_liquidity_returns_full_balance() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
