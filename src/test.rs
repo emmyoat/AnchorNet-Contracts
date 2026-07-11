@@ -1233,6 +1233,66 @@ fn test_list_fee_waived_anchors_empty_by_default() {
 }
 
 #[test]
+fn test_list_assets_returns_ever_funded_in_first_use_order() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    assert_eq!(client.list_assets(&0, &10).len(), 0);
+
+    client.provide_liquidity(&anchor, &usdc, &100);
+    client.provide_liquidity(&anchor, &eurc, &200);
+
+    let assets = client.list_assets(&0, &10);
+    assert_eq!(assets.len(), 2);
+    assert_eq!(assets.get(0).unwrap(), usdc);
+    assert_eq!(assets.get(1).unwrap(), eurc);
+}
+
+#[test]
+fn test_list_assets_does_not_duplicate_on_repeat_provide() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.provide_liquidity(&anchor, &asset, &500);
+
+    let assets = client.list_assets(&0, &10);
+    assert_eq!(assets.len(), 1);
+    assert_eq!(assets.get(0).unwrap(), asset);
+}
+
+#[test]
+fn test_list_assets_pagination() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+    let gbpc = symbol_short!("GBPC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &100);
+    client.provide_liquidity(&anchor, &eurc, &100);
+    client.provide_liquidity(&anchor, &gbpc, &100);
+
+    let page = client.list_assets(&0, &2);
+    assert_eq!(page.len(), 2);
+    assert_eq!(page.get(0).unwrap(), usdc);
+    assert_eq!(page.get(1).unwrap(), eurc);
+
+    let rest = client.list_assets(&2, &10);
+    assert_eq!(rest.len(), 1);
+    assert_eq!(rest.get(0).unwrap(), gbpc);
+}
+
+#[test]
 fn test_cancel_expired_settlement_rejects_double_reclaim() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
