@@ -89,3 +89,15 @@ pub fn fees_collected(env: &Env, asset: &Symbol, amount: i128) {
     env.events()
         .publish((symbol_short!("collect"), asset.clone()), amount);
 }
+
+/// Emitted when the settlement expiry window changes. Topics:
+/// `("expiry",)`, data: `u32` ledgers.
+pub fn settlement_expiry_changed(env: &Env, ledgers: u32) {
+    env.events().publish((symbol_short!("expiry"),), ledgers);
+}
+
+/// Emitted when a timed-out settlement is reclaimed. Topics:
+/// `("expired", id)`.
+pub fn settlement_expired(env: &Env, id: u64) {
+    env.events().publish((symbol_short!("expired"), id), ());
+}
