@@ -569,6 +569,15 @@ impl AnchornetContract {
         out
     }
 
+    /// Returns the number of distinct assets that have ever had liquidity
+    /// provided. Unlike [`anchor_count`](Self::anchor_count), assets are
+    /// never "deregistered" from the enumeration backing
+    /// [`list_assets`](Self::list_assets), so this is simply that list's
+    /// length, sparing callers from paginating through it just to count.
+    pub fn asset_count(env: Env) -> u32 {
+        storage::get_asset_list(&env).len()
+    }
+
     /// Returns the total liquidity available in `asset` across all providers.
     pub fn total_liquidity(env: Env, asset: Symbol) -> i128 {
         storage::get_pool(&env, &asset).total
