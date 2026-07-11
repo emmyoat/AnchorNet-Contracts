@@ -46,6 +46,10 @@ pub enum DataKey {
     SettlementExpiryLedgers,
     /// Ordered list of every asset that has ever had liquidity provided.
     AssetList,
+    /// Minimum liquidity floor for an asset's pool; withdrawals that would
+    /// leave the pool below this amount are rejected. Zero disables the
+    /// check.
+    MinLiquidity(Symbol),
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -293,6 +297,20 @@ pub fn set_settlement_expiry_ledgers(env: &Env, ledgers: u32) {
     env.storage()
         .instance()
         .set(&DataKey::SettlementExpiryLedgers, &ledgers);
+}
+
+/// Reads the minimum liquidity floor configured for `asset` (zero, meaning
+/// disabled, if never configured).
+pub fn get_min_liquidity(env: &Env, asset: &Symbol) -> i128 {
+    let key = DataKey::MinLiquidity(asset.clone());
+    env.storage().persistent().get(&key).unwrap_or(0)
+}
+
+/// Persists the minimum liquidity floor for `asset`.
+pub fn set_min_liquidity(env: &Env, asset: &Symbol, floor: i128) {
+    let key = DataKey::MinLiquidity(asset.clone());
+    env.storage().persistent().set(&key, &floor);
+    extend(env, &key);
 }
 
 /// Reads the accrued (uncollected) protocol fees for `asset`.
