@@ -1449,6 +1449,63 @@ fn test_list_assets_pagination() {
 }
 
 #[test]
+fn test_is_settlement_expired_false_while_disabled() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let id = client.open_settlement(&anchor, &asset, &400);
+
+    env.ledger().set_sequence_number(1_000_000);
+    assert!(!client.is_settlement_expired(&id));
+}
+
+#[test]
+fn test_is_settlement_expired_false_before_boundary() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&50);
+    let id = client.open_settlement(&anchor, &asset, &400); // opened_at == 0
+
+    env.ledger().set_sequence_number(49);
+    assert!(!client.is_settlement_expired(&id));
+}
+
+#[test]
+fn test_is_settlement_expired_true_at_boundary() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&50);
+    let id = client.open_settlement(&anchor, &asset, &400); // opened_at == 0
+
+    env.ledger().set_sequence_number(50);
+    assert!(client.is_settlement_expired(&id));
+}
+
+#[test]
+fn test_is_settlement_expired_false_once_executed() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&10);
+    let id = client.open_settlement(&anchor, &asset, &400);
+    client.execute_settlement(&id);
+
+    env.ledger().set_sequence_number(20);
+    assert!(!client.is_settlement_expired(&id));
+}
+
+#[test]
+fn test_is_settlement_expired_rejects_unknown_id() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    let err = client
+        .try_is_settlement_expired(&99)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::SettlementNotFound);
+}
+
+#[test]
 fn test_total_liquidity_all_sums_across_assets() {
     let env = Env::default();
     env.mock_all_auths();
