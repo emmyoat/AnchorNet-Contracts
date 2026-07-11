@@ -244,6 +244,32 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Registers every address in `anchors` as an approved liquidity
+    /// provider in a single call. Admin only.
+    ///
+    /// Validates the entire batch before registering anything: if any
+    /// address is already registered, or the same address appears more than
+    /// once in `anchors`, the whole call fails with
+    /// [`Error::AnchorAlreadyRegistered`] and no anchor is registered.
+    pub fn register_anchors(env: Env, anchors: Vec<Address>) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+
+        let mut seen = Vec::new(&env);
+        for anchor in anchors.iter() {
+            if storage::is_anchor(&env, &anchor) || seen.contains(&anchor) {
+                return Err(Error::AnchorAlreadyRegistered);
+            }
+            seen.push_back(anchor);
+        }
+
+        for anchor in anchors.iter() {
+            storage::set_anchor(&env, &anchor);
+            storage::remember_anchor(&env, &anchor);
+            events::anchor_registered(&env, &anchor);
+        }
+        Ok(())
+    }
+
     /// Returns `true` if `anchor` is a registered liquidity provider.
     pub fn is_anchor(env: Env, anchor: Address) -> bool {
         storage::is_anchor(&env, &anchor)
