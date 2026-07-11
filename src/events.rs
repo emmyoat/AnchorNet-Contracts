@@ -77,6 +77,13 @@ pub fn settlement_cancelled(env: &Env, id: u64) {
     env.events().publish((symbol_short!("cancelled"), id), ());
 }
 
+/// Emitted when an anchor's fee waiver flag changes. Topics:
+/// `("waiver", anchor)`, data: `bool`.
+pub fn fee_waiver_changed(env: &Env, anchor: &Address, waived: bool) {
+    env.events()
+        .publish((symbol_short!("waiver"), anchor.clone()), waived);
+}
+
 /// Emitted when accrued fees are collected. Topics: `("collect", asset)`.
 pub fn fees_collected(env: &Env, asset: &Symbol, amount: i128) {
     env.events()
