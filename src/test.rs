@@ -1,7 +1,7 @@
 use crate::{AnchornetContract, AnchornetContractClient, Error, SettlementStatus};
 use soroban_sdk::{
     symbol_short,
-    testutils::{Address as _, Events as _},
+    testutils::{Address as _, Events as _, Ledger as _},
     vec, Address, Env, IntoVal, Symbol,
 };
 
@@ -1054,4 +1054,125 @@ fn test_open_settlement_fee_overflow_panics() {
     // Reserving close to `i128::MAX` liquidity overflows while computing the
     // settlement fee (`amount * fee_bps`).
     client.open_settlement(&anchor, &asset, &i128::MAX);
+}
+
+#[test]
+fn test_settlement_expiry_disabled_by_default() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    assert_eq!(client.settlement_expiry_ledgers(), 0);
+}
+
+#[test]
+fn test_set_settlement_expiry_ledgers_updates_value() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    client.initialize(&admin);
+
+    client.set_settlement_expiry_ledgers(&100);
+
+    assert_eq!(client.settlement_expiry_ledgers(), 100);
+}
+
+#[test]
+fn test_cancel_expired_settlement_disabled_by_default() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    let id = client.open_settlement(&anchor, &asset, &400);
+
+    // Expiry is disabled (zero) by default, no matter how far the ledger
+    // advances.
+    env.ledger().set_sequence_number(1_000_000);
+    let err = client
+        .try_cancel_expired_settlement(&id)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::SettlementNotExpired);
+}
+
+#[test]
+fn test_cancel_expired_settlement_rejects_before_expiry() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&50);
+    let id = client.open_settlement(&anchor, &asset, &400); // opened_at == 0
+
+    // One ledger short of the 50-ledger expiry window.
+    env.ledger().set_sequence_number(49);
+    let err = client
+        .try_cancel_expired_settlement(&id)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::SettlementNotExpired);
+
+    // The settlement is untouched and its liquidity still reserved.
+    assert_eq!(client.total_liquidity(&asset), 600);
+}
+
+#[test]
+fn test_cancel_expired_settlement_reclaims_at_boundary() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&50);
+    let id = client.open_settlement(&anchor, &asset, &400); // opened_at == 0
+    assert_eq!(client.total_liquidity(&asset), 600);
+
+    // Exactly at the expiry boundary the settlement becomes reclaimable.
+    env.ledger().set_sequence_number(50);
+    client.cancel_expired_settlement(&id);
+
+    assert_eq!(client.settlement(&id).status, SettlementStatus::Expired);
+    assert_eq!(client.total_liquidity(&asset), 1_000);
+}
+
+#[test]
+fn test_cancel_expired_settlement_rejects_already_executed() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&10);
+    let id = client.open_settlement(&anchor, &asset, &400);
+    client.execute_settlement(&id);
+
+    env.ledger().set_sequence_number(20);
+    let err = client
+        .try_cancel_expired_settlement(&id)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidSettlementState);
+}
+
+#[test]
+fn test_cancel_expired_settlement_rejects_unknown_id() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    let err = client
+        .try_cancel_expired_settlement(&99)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::SettlementNotFound);
+}
+
+#[test]
+fn test_cancel_expired_settlement_rejects_double_reclaim() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_settlement_expiry_ledgers(&10);
+    let id = client.open_settlement(&anchor, &asset, &400);
+
+    env.ledger().set_sequence_number(10);
+    client.cancel_expired_settlement(&id);
+
+    let err = client
+        .try_cancel_expired_settlement(&id)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidSettlementState);
 }
