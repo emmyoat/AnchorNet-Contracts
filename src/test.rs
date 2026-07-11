@@ -1449,6 +1449,50 @@ fn test_list_assets_pagination() {
 }
 
 #[test]
+fn test_list_settlements_by_status_filters_lifecycle_state() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let pending = client.open_settlement(&anchor, &asset, &100);
+    let executed = client.open_settlement(&anchor, &asset, &100);
+    let cancelled = client.open_settlement(&anchor, &asset, &100);
+    client.execute_settlement(&executed);
+    client.cancel_settlement(&cancelled);
+
+    let pending_list = client.list_settlements_by_status(&SettlementStatus::Pending, &1, &10);
+    assert_eq!(pending_list.len(), 1);
+    assert_eq!(pending_list.get(0).unwrap().id, pending);
+
+    let executed_list = client.list_settlements_by_status(&SettlementStatus::Executed, &1, &10);
+    assert_eq!(executed_list.len(), 1);
+    assert_eq!(executed_list.get(0).unwrap().id, executed);
+
+    let cancelled_list = client.list_settlements_by_status(&SettlementStatus::Cancelled, &1, &10);
+    assert_eq!(cancelled_list.len(), 1);
+    assert_eq!(cancelled_list.get(0).unwrap().id, cancelled);
+
+    // No settlement has expired, so the Expired filter comes back empty.
+    assert_eq!(
+        client
+            .list_settlements_by_status(&SettlementStatus::Expired, &1, &10)
+            .len(),
+        0
+    );
+}
+
+#[test]
+fn test_list_settlements_by_status_respects_limit() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    for _ in 0..3 {
+        client.open_settlement(&anchor, &asset, &100);
+    }
+
+    let limited = client.list_settlements_by_status(&SettlementStatus::Pending, &1, &2);
+    assert_eq!(limited.len(), 2);
+}
+
+#[test]
 fn test_cancel_expired_settlement_rejects_double_reclaim() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
