@@ -3,7 +3,7 @@
 //! This crate contains on-chain logic for the AnchorNet liquidity coordination
 //! network (liquidity pools, routing metadata, settlement hooks).
 
-use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contractmeta, Address, Env, Symbol, Vec};
 
 mod error;
 mod events;
@@ -17,6 +17,12 @@ pub use types::{Pool, Settlement, SettlementStatus};
 const MAX_FEE_BPS: u32 = 1_000;
 /// Basis-points denominator.
 const BPS_DENOMINATOR: i128 = 10_000;
+
+contractmeta!(
+    key = "Description",
+    val = "AnchorNet liquidity coordination contract"
+);
+contractmeta!(key = "Name", val = "anchornet-contracts");
 
 /// The AnchorNet liquidity coordination contract.
 ///
