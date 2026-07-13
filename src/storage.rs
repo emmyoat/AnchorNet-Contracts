@@ -56,6 +56,9 @@ pub enum DataKey {
     /// Maximum amount a single settlement may reserve for an asset. Zero
     /// disables the check.
     MaxSettlementAmount(Symbol),
+    /// Per-asset protocol fee override, in basis points. Falls back to the
+    /// global fee when unset.
+    AssetFee(Symbol),
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -347,6 +350,26 @@ pub fn set_max_settlement_amount(env: &Env, asset: &Symbol, amount: i128) {
     let key = DataKey::MaxSettlementAmount(asset.clone());
     env.storage().persistent().set(&key, &amount);
     extend(env, &key);
+}
+
+/// Reads the per-asset fee override for `asset`, if one has been configured.
+pub fn get_asset_fee(env: &Env, asset: &Symbol) -> Option<u32> {
+    let key = DataKey::AssetFee(asset.clone());
+    env.storage().persistent().get(&key)
+}
+
+/// Persists a per-asset fee override for `asset`.
+pub fn set_asset_fee(env: &Env, asset: &Symbol, bps: u32) {
+    let key = DataKey::AssetFee(asset.clone());
+    env.storage().persistent().set(&key, &bps);
+    extend(env, &key);
+}
+
+/// Removes any per-asset fee override for `asset`, reverting it to the
+/// global fee.
+pub fn clear_asset_fee(env: &Env, asset: &Symbol) {
+    let key = DataKey::AssetFee(asset.clone());
+    env.storage().persistent().remove(&key);
 }
 
 /// Reads the accrued (uncollected) protocol fees for `asset`.
