@@ -402,6 +402,26 @@ impl AnchornetContract {
         storage::get_min_liquidity(&env, &asset)
     }
 
+    /// Sets the maximum amount a single [`open_settlement`](Self::open_settlement)
+    /// call may reserve for `asset`. A call above this cap fails with
+    /// [`Error::AboveMaxSettlementAmount`]. Zero (the default) disables the
+    /// check. Admin only.
+    pub fn set_max_settlement_amount(env: Env, asset: Symbol, amount: i128) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if amount < 0 {
+            return Err(Error::InvalidAmount);
+        }
+        storage::set_max_settlement_amount(&env, &asset, amount);
+        events::max_settlement_amount_changed(&env, &asset, amount);
+        Ok(())
+    }
+
+    /// Returns the maximum settlement amount configured for `asset` (zero if
+    /// disabled).
+    pub fn max_settlement_amount(env: Env, asset: Symbol) -> i128 {
+        storage::get_max_settlement_amount(&env, &asset)
+    }
+
     /// Withdraws `amount` of liquidity in `asset` back to `provider`.
     ///
     /// Requires authorization from `provider` and fails with
@@ -472,6 +492,10 @@ impl AnchornetContract {
         }
         if !storage::is_anchor(&env, &anchor) {
             return Err(Error::AnchorNotRegistered);
+        }
+        let cap = storage::get_max_settlement_amount(&env, &asset);
+        if cap > 0 && amount > cap {
+            return Err(Error::AboveMaxSettlementAmount);
         }
 
         let mut pool = storage::get_pool(&env, &asset);
