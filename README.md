@@ -58,6 +58,7 @@ state.
 | `list_anchors(start, limit)` | – | Page through currently registered anchors |
 | `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
+| `provide_liquidity_multi(provider, requests)` | provider | Add liquidity to several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of it |
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
 | `withdraw_all_liquidity(provider, asset)` | provider | Withdraw a provider's entire balance in one call |
 | `withdraw_liquidity_multi(provider, requests)` | provider | Withdraw from several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of it |
@@ -66,6 +67,7 @@ state.
 | `total_liquidity(asset)` | – | Read total liquidity for an asset |
 | `total_liquidity_all()` | – | Read the sum of total liquidity across every asset ever funded |
 | `balance(provider, asset)` | – | Read a provider's balance |
+| `anchor_balances(provider, start, limit)` | – | Page through a provider's non-zero balances across every known asset |
 | `list_assets(start, limit)` | – | Page through every asset that has ever had liquidity provided |
 | `asset_count()` | – | Read the number of distinct assets that have ever had liquidity provided |
 | `set_min_liquidity(asset, floor)` | admin | Set the minimum liquidity floor an asset's pool may not be withdrawn below (0 disables) |
@@ -115,6 +117,7 @@ state.
 | `list_settlements_by_asset(asset, start, limit)` | – | Page through settlements in one asset |
 | `list_settlements_by_status(status, start, limit)` | – | Page through settlements in a given lifecycle state |
 | `settlement_count_by_status(status)` | – | Count every settlement in a given lifecycle state (no pagination) |
+| `total_settled_amount(status)` | – | Sum settled `amount` across every settlement in a given lifecycle state |
 | `contract_info()` | – | One-call snapshot of version, paused flag, fee, and anchor/asset/settlement counts |
 
 `cancel_expired_settlement` requires no authorization: it only ever returns
