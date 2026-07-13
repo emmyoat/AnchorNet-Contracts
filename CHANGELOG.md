@@ -2,6 +2,20 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.9.0]
+
+### Added
+
+- **Liquidity:** `provide_liquidity_multi`, batch provisioning across
+  several assets in one call and authorization, sharing a new internal
+  `do_provide` helper with the refactored `provide_liquidity`.
+- **Liquidity:** `anchor_balances(provider, start, limit)` to page through a
+  provider's non-zero balances across every known asset, instead of calling
+  `balance` once per asset off-chain.
+- **Settlements:** `total_settled_amount(status)`, summing settled amounts
+  across the full history for a given lifecycle state, alongside
+  `settlement_count_by_status`.
+
 ## [0.8.0]
 
 ### Added
