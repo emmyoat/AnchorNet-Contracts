@@ -675,7 +675,7 @@ fn test_list_settlements_by_asset_empty_for_unknown() {
 fn test_version() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
-    assert_eq!(client.version(), 8);
+    assert_eq!(client.version(), 9);
 }
 
 #[test]
