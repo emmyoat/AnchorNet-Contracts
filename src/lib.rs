@@ -165,6 +165,16 @@ impl AnchornetContract {
         storage::is_paused(&env)
     }
 
+    /// Extends the TTL of the contract instance and code so it does not
+    /// expire during a long period of inactivity. Callable by the admin or
+    /// the appointed [`operator`](Self::operator); has no effect on
+    /// individual entries (those extend automatically on access).
+    pub fn extend_instance_ttl(env: Env, caller: Address) -> Result<(), Error> {
+        Self::require_admin_or_operator(&env, &caller)?;
+        storage::extend_instance_ttl(&env);
+        Ok(())
+    }
+
     /// Sets the protocol fee in basis points (max 1000 = 10%). Admin only.
     pub fn set_fee(env: Env, bps: u32) -> Result<(), Error> {
         Self::require_admin(&env)?;
