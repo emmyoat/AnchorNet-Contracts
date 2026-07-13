@@ -11,7 +11,7 @@ mod storage;
 mod types;
 
 pub use error::Error;
-pub use types::{Pool, Settlement, SettlementStatus};
+pub use types::{ContractInfo, Pool, Settlement, SettlementStatus};
 
 /// Maximum protocol fee that can be configured: 1000 bps (10%).
 const MAX_FEE_BPS: u32 = 1_000;
@@ -839,6 +839,21 @@ impl AnchornetContract {
     /// Returns the accrued (uncollected) protocol fees for `asset`.
     pub fn fees_accrued(env: Env, asset: Symbol) -> i128 {
         storage::get_fees_accrued(&env, &asset)
+    }
+
+    /// Returns a one-call snapshot of overall contract state (version,
+    /// paused flag, global fee, anchor/asset/settlement counts), for
+    /// off-chain dashboards and indexers that would otherwise need several
+    /// separate calls.
+    pub fn contract_info(env: Env) -> ContractInfo {
+        ContractInfo {
+            version: Self::version(),
+            paused: storage::is_paused(&env),
+            fee_bps: storage::get_fee_bps(&env),
+            anchor_count: Self::anchor_count(env.clone()),
+            asset_count: Self::asset_count(env.clone()),
+            settlement_count: storage::get_settlement_count(&env),
+        }
     }
 
     /// Returns the total number of settlements currently in `status`,
