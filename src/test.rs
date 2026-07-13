@@ -2366,14 +2366,8 @@ fn test_total_settled_amount_sums_by_status() {
         client.total_settled_amount(&SettlementStatus::Executed),
         350
     );
-    assert_eq!(
-        client.total_settled_amount(&SettlementStatus::Pending),
-        50
-    );
-    assert_eq!(
-        client.total_settled_amount(&SettlementStatus::Cancelled),
-        0
-    );
+    assert_eq!(client.total_settled_amount(&SettlementStatus::Pending), 50);
+    assert_eq!(client.total_settled_amount(&SettlementStatus::Cancelled), 0);
 }
 
 #[test]
@@ -2381,8 +2375,5 @@ fn test_total_settled_amount_is_zero_with_no_settlements() {
     let env = Env::default();
     let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
 
-    assert_eq!(
-        client.total_settled_amount(&SettlementStatus::Pending),
-        0
-    );
+    assert_eq!(client.total_settled_amount(&SettlementStatus::Pending), 0);
 }
