@@ -1859,3 +1859,86 @@ fn test_cancel_expired_settlement_rejects_double_reclaim() {
         .unwrap();
     assert_eq!(err, Error::InvalidSettlementState);
 }
+
+#[test]
+fn test_max_settlement_amount_disabled_by_default() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    assert_eq!(client.max_settlement_amount(&asset), 0);
+
+    // With no cap configured, a large settlement is unaffected.
+    client.open_settlement(&anchor, &asset, &1_000);
+}
+
+#[test]
+fn test_set_max_settlement_amount_updates_value() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+
+    client.set_max_settlement_amount(&asset, &500);
+
+    assert_eq!(client.max_settlement_amount(&asset), 500);
+}
+
+#[test]
+fn test_set_max_settlement_amount_rejects_negative_value() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+
+    let err = client
+        .try_set_max_settlement_amount(&asset, &-1)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidAmount);
+}
+
+#[test]
+fn test_open_settlement_rejects_amount_above_cap() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_max_settlement_amount(&asset, &500);
+
+    let err = client
+        .try_open_settlement(&anchor, &asset, &600)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AboveMaxSettlementAmount);
+}
+
+#[test]
+fn test_open_settlement_allows_amount_at_cap() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_max_settlement_amount(&asset, &500);
+
+    client.open_settlement(&anchor, &asset, &500);
+}
+
+#[test]
+fn test_max_settlement_amount_cap_is_per_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &1_000);
+    client.set_max_settlement_amount(&usdc, &200);
+
+    // The cap on USDC does not affect settlements against the EURC pool.
+    client.open_settlement(&anchor, &eurc, &1_000);
+
+    let err = client
+        .try_open_settlement(&anchor, &usdc, &300)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AboveMaxSettlementAmount);
+}
