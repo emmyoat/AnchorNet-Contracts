@@ -53,6 +53,9 @@ pub enum DataKey {
     /// The contract operator, an address the admin may appoint to pause and
     /// unpause the contract without holding full admin rights.
     Operator,
+    /// Maximum amount a single settlement may reserve for an asset. Zero
+    /// disables the check.
+    MaxSettlementAmount(Symbol),
 }
 
 fn extend(env: &Env, key: &DataKey) {
@@ -329,6 +332,20 @@ pub fn get_min_liquidity(env: &Env, asset: &Symbol) -> i128 {
 pub fn set_min_liquidity(env: &Env, asset: &Symbol, floor: i128) {
     let key = DataKey::MinLiquidity(asset.clone());
     env.storage().persistent().set(&key, &floor);
+    extend(env, &key);
+}
+
+/// Reads the maximum settlement amount configured for `asset` (zero, meaning
+/// disabled, if never configured).
+pub fn get_max_settlement_amount(env: &Env, asset: &Symbol) -> i128 {
+    let key = DataKey::MaxSettlementAmount(asset.clone());
+    env.storage().persistent().get(&key).unwrap_or(0)
+}
+
+/// Persists the maximum settlement amount for `asset`.
+pub fn set_max_settlement_amount(env: &Env, asset: &Symbol, amount: i128) {
+    let key = DataKey::MaxSettlementAmount(asset.clone());
+    env.storage().persistent().set(&key, &amount);
     extend(env, &key);
 }
 
