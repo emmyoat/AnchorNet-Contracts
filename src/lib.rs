@@ -411,18 +411,43 @@ impl AnchornetContract {
         if !storage::is_anchor(&env, &provider) {
             return Err(Error::AnchorNotRegistered);
         }
+        Self::do_provide(&env, &provider, &asset, amount);
+        Ok(())
+    }
 
-        let mut pool = storage::get_pool(&env, &asset);
-        let prior = storage::get_balance(&env, &provider, &asset);
-        if prior == 0 {
-            pool.providers += 1;
+    /// Provides liquidity to multiple assets for `provider` in a single call
+    /// and authorization. Every `(asset, amount)` request is validated
+    /// (positive amount, no asset repeated) before any of them are applied.
+    /// Fails with [`Error::DuplicateAssetInBatch`] if the same asset appears
+    /// more than once; use a single combined amount instead.
+    pub fn provide_liquidity_multi(
+        env: Env,
+        provider: Address,
+        requests: Vec<(Symbol, i128)>,
+    ) -> Result<(), Error> {
+        provider.require_auth();
+        Self::require_not_paused(&env)?;
+        if requests.is_empty() {
+            return Err(Error::InvalidAmount);
         }
-        pool.total += amount;
-        storage::set_pool(&env, &asset, &pool);
-        storage::set_balance(&env, &provider, &asset, prior + amount);
-        storage::remember_asset(&env, &asset);
+        if !storage::is_anchor(&env, &provider) {
+            return Err(Error::AnchorNotRegistered);
+        }
 
-        events::liquidity_provided(&env, &provider, &asset, amount);
+        let mut seen = Vec::new(&env);
+        for (asset, amount) in requests.iter() {
+            if amount <= 0 {
+                return Err(Error::InvalidAmount);
+            }
+            if seen.contains(&asset) {
+                return Err(Error::DuplicateAssetInBatch);
+            }
+            seen.push_back(asset.clone());
+        }
+
+        for (asset, amount) in requests.iter() {
+            Self::do_provide(&env, &provider, &asset, amount);
+        }
         Ok(())
     }
 
@@ -980,6 +1005,23 @@ impl AnchornetContract {
     /// per-asset override if one is configured, otherwise the global fee.
     fn effective_fee_bps(env: &Env, asset: &Symbol) -> u32 {
         storage::get_asset_fee(env, asset).unwrap_or_else(|| storage::get_fee_bps(env))
+    }
+
+    /// Adds `amount` of `asset` to `provider`'s balance and the pool total,
+    /// incrementing the pool's provider count on a first contribution.
+    /// Callers must first validate that `amount` is positive and `provider`
+    /// is a registered anchor.
+    fn do_provide(env: &Env, provider: &Address, asset: &Symbol, amount: i128) {
+        let mut pool = storage::get_pool(env, asset);
+        let prior = storage::get_balance(env, provider, asset);
+        if prior == 0 {
+            pool.providers += 1;
+        }
+        pool.total += amount;
+        storage::set_pool(env, asset, &pool);
+        storage::set_balance(env, provider, asset, prior + amount);
+        storage::remember_asset(env, asset);
+        events::liquidity_provided(env, provider, asset, amount);
     }
 
     /// Moves `amount` of `asset` out of `provider`'s balance and the pool
