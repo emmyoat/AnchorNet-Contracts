@@ -2164,3 +2164,91 @@ fn test_max_fee_bps_matches_set_fee_cap() {
     let err = client.try_set_fee(&(cap + 1)).err().unwrap().unwrap();
     assert_eq!(err, Error::InvalidFee);
 }
+
+#[test]
+fn test_withdraw_liquidity_multi_withdraws_every_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &500);
+
+    let requests = vec![&env, (usdc.clone(), 400), (eurc.clone(), 200)];
+    client.withdraw_liquidity_multi(&anchor, &requests);
+
+    assert_eq!(client.balance(&anchor, &usdc), 600);
+    assert_eq!(client.balance(&anchor, &eurc), 300);
+}
+
+#[test]
+fn test_withdraw_liquidity_multi_rejects_empty_batch() {
+    let env = Env::default();
+    let (client, _admin, anchor, _asset) = funded(&env, 1_000);
+
+    let empty: soroban_sdk::Vec<(Symbol, i128)> = vec![&env];
+    let err = client
+        .try_withdraw_liquidity_multi(&anchor, &empty)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidAmount);
+}
+
+#[test]
+fn test_withdraw_liquidity_multi_rejects_duplicate_asset() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let requests = vec![&env, (asset.clone(), 100), (asset.clone(), 100)];
+    let err = client
+        .try_withdraw_liquidity_multi(&anchor, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::DuplicateAssetInBatch);
+}
+
+#[test]
+fn test_withdraw_liquidity_multi_applies_none_on_insufficient_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &1_000);
+    client.provide_liquidity(&anchor, &eurc, &100);
+
+    // The EURC leg exceeds the provider's balance, so neither leg applies.
+    let requests = vec![&env, (usdc.clone(), 400), (eurc.clone(), 200)];
+    let err = client
+        .try_withdraw_liquidity_multi(&anchor, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InsufficientLiquidity);
+    assert_eq!(client.balance(&anchor, &usdc), 1_000);
+    assert_eq!(client.balance(&anchor, &eurc), 100);
+}
+
+#[test]
+fn test_withdraw_liquidity_multi_respects_min_liquidity_floor() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_min_liquidity(&asset, &700);
+
+    let requests = vec![&env, (asset.clone(), 400)];
+    let err = client
+        .try_withdraw_liquidity_multi(&anchor, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::BelowMinLiquidity);
+}
