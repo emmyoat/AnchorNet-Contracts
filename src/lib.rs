@@ -806,6 +806,32 @@ impl AnchornetContract {
         storage::get_balance(&env, &provider, &asset)
     }
 
+    /// Returns up to `limit` of `provider`'s non-zero balances, as
+    /// `(asset, balance)` pairs, scanning
+    /// [`list_assets`](Self::list_assets) starting at index `start`. Spares
+    /// off-chain callers from calling [`balance`](Self::balance) once per
+    /// known asset just to discover which ones a provider actually holds.
+    pub fn anchor_balances(
+        env: Env,
+        provider: Address,
+        start: u32,
+        limit: u32,
+    ) -> Vec<(Symbol, i128)> {
+        let mut out = Vec::new(&env);
+        let assets = storage::get_asset_list(&env);
+        let total = assets.len();
+        let mut idx = start;
+        while idx < total && (out.len() as u32) < limit {
+            let asset = assets.get(idx).unwrap();
+            let balance = storage::get_balance(&env, &provider, &asset);
+            if balance != 0 {
+                out.push_back((asset, balance));
+            }
+            idx += 1;
+        }
+        out
+    }
+
     /// Returns the settlement with `id`, or [`Error::SettlementNotFound`].
     pub fn settlement(env: Env, id: u64) -> Result<Settlement, Error> {
         storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)
