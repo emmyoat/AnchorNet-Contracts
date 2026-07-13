@@ -2021,3 +2021,58 @@ fn test_fee_waiver_takes_precedence_over_asset_fee_override() {
     let id = client.open_settlement(&anchor, &asset, &1_000);
     assert_eq!(client.settlement(&id).fee, 0);
 }
+
+#[test]
+fn test_admin_can_extend_instance_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    client.initialize(&admin);
+
+    // Succeeds and does not panic; the TTL value itself isn't observable
+    // through the public interface, so this exercises the auth gate and the
+    // call succeeding rather than the underlying ledger bookkeeping.
+    client.extend_instance_ttl(&admin);
+}
+
+#[test]
+fn test_operator_can_extend_instance_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let operator = Address::generate(&env);
+    client.initialize(&admin);
+    client.set_operator(&operator);
+
+    client.extend_instance_ttl(&operator);
+}
+
+#[test]
+fn test_stranger_cannot_extend_instance_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let stranger = Address::generate(&env);
+    client.initialize(&admin);
+
+    let err = client
+        .try_extend_instance_ttl(&stranger)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::NotAuthorized);
+}
+
+#[test]
+fn test_extend_instance_ttl_fails_before_initialize() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    let err = client
+        .try_extend_instance_ttl(&admin)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::NotInitialized);
+}
