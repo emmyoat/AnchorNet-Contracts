@@ -1944,3 +1944,80 @@ fn test_max_settlement_amount_cap_is_per_asset() {
         .unwrap();
     assert_eq!(err, Error::AboveMaxSettlementAmount);
 }
+
+#[test]
+fn test_asset_fee_falls_back_to_global_by_default() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+
+    assert_eq!(client.asset_fee(&asset), 100);
+}
+
+#[test]
+fn test_set_asset_fee_overrides_global_fee() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1% globally
+    client.set_asset_fee(&asset, &500); // 5% for this asset
+
+    assert_eq!(client.asset_fee(&asset), 500);
+    assert_eq!(client.quote_fee(&asset, &1_000), 50);
+
+    let id = client.open_settlement(&anchor, &asset, &1_000);
+    assert_eq!(client.settlement(&id).fee, 50);
+}
+
+#[test]
+fn test_set_asset_fee_rejects_above_cap() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+
+    let err = client
+        .try_set_asset_fee(&asset, &1_001)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidFee);
+}
+
+#[test]
+fn test_clear_asset_fee_reverts_to_global() {
+    let env = Env::default();
+    let (client, _admin, _anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100);
+    client.set_asset_fee(&asset, &500);
+
+    client.clear_asset_fee(&asset);
+
+    assert_eq!(client.asset_fee(&asset), 100);
+}
+
+#[test]
+fn test_asset_fee_override_is_per_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.set_fee(&100);
+    client.set_asset_fee(&usdc, &500);
+
+    assert_eq!(client.asset_fee(&usdc), 500);
+    assert_eq!(client.asset_fee(&eurc), 100);
+}
+
+#[test]
+fn test_fee_waiver_takes_precedence_over_asset_fee_override() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_asset_fee(&asset, &500);
+    client.set_fee_waiver(&anchor, &true);
+
+    let id = client.open_settlement(&anchor, &asset, &1_000);
+    assert_eq!(client.settlement(&id).fee, 0);
+}
