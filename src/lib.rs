@@ -840,6 +840,25 @@ impl AnchornetContract {
     pub fn fees_accrued(env: Env, asset: Symbol) -> i128 {
         storage::get_fees_accrued(&env, &asset)
     }
+
+    /// Returns the total number of settlements currently in `status`,
+    /// scanning every settlement (unlike
+    /// [`list_settlements_by_status`](Self::list_settlements_by_status),
+    /// which pages and stops once `limit` matches are found).
+    pub fn settlement_count_by_status(env: Env, status: SettlementStatus) -> u64 {
+        let count = storage::get_settlement_count(&env);
+        let mut total: u64 = 0;
+        let mut id = 1;
+        while id <= count {
+            if let Some(settlement) = storage::get_settlement(&env, id) {
+                if settlement.status == status {
+                    total += 1;
+                }
+            }
+            id += 1;
+        }
+        total
+    }
 }
 
 impl AnchornetContract {
