@@ -2,6 +2,20 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.8.0]
+
+### Added
+
+- **Settlements:** `settlement_count_by_status`, a full-history aggregate
+  count complementing the paginated `list_settlements_by_status`.
+- **Liquidity:** `withdraw_liquidity_multi`, batch withdrawal across several
+  assets in one call and authorization; validates the whole batch (no
+  duplicate assets, sufficient balance, minimum liquidity floor) before
+  applying any of it, via a new `Error::DuplicateAssetInBatch`.
+- **Operations:** `contract_info`, a one-call snapshot (version, paused,
+  fee, anchor/asset/settlement counts) for off-chain dashboards; `max_fee_bps`
+  to read the fee cap without hardcoding it off-chain.
+
 ## [0.7.0]
 
 ### Added
