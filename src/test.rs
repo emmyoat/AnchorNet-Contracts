@@ -2116,3 +2116,36 @@ fn test_settlement_count_by_status_is_zero_with_no_settlements() {
         0
     );
 }
+
+#[test]
+fn test_contract_info_reflects_current_state() {
+    let env = Env::default();
+    let (client, admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&250);
+    client.open_settlement(&anchor, &asset, &100);
+    client.pause(&admin);
+
+    let info = client.contract_info();
+
+    assert_eq!(info.version, client.version());
+    assert!(info.paused);
+    assert_eq!(info.fee_bps, 250);
+    assert_eq!(info.anchor_count, 1);
+    assert_eq!(info.asset_count, 1);
+    assert_eq!(info.settlement_count, 1);
+}
+
+#[test]
+fn test_contract_info_before_any_activity() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    client.initialize(&admin);
+
+    let info = client.contract_info();
+
+    assert!(!info.paused);
+    assert_eq!(info.anchor_count, 0);
+    assert_eq!(info.asset_count, 0);
+    assert_eq!(info.settlement_count, 0);
+}
