@@ -2350,3 +2350,39 @@ fn test_provide_liquidity_multi_blocked_while_paused() {
         .unwrap();
     assert_eq!(err, Error::Paused);
 }
+
+#[test]
+fn test_total_settled_amount_sums_by_status() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    let a = client.open_settlement(&anchor, &asset, &100);
+    let b = client.open_settlement(&anchor, &asset, &250);
+    client.open_settlement(&anchor, &asset, &50); // stays pending
+    client.execute_settlement(&a);
+    client.execute_settlement(&b);
+
+    assert_eq!(
+        client.total_settled_amount(&SettlementStatus::Executed),
+        350
+    );
+    assert_eq!(
+        client.total_settled_amount(&SettlementStatus::Pending),
+        50
+    );
+    assert_eq!(
+        client.total_settled_amount(&SettlementStatus::Cancelled),
+        0
+    );
+}
+
+#[test]
+fn test_total_settled_amount_is_zero_with_no_settlements() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    assert_eq!(
+        client.total_settled_amount(&SettlementStatus::Pending),
+        0
+    );
+}
