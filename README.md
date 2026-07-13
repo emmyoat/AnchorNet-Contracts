@@ -60,6 +60,7 @@ state.
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
 | `withdraw_all_liquidity(provider, asset)` | provider | Withdraw a provider's entire balance in one call |
+| `withdraw_liquidity_multi(provider, requests)` | provider | Withdraw from several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of it |
 | `deregister_anchor(anchor)` | admin | Remove an anchor from the approved set |
 | `pool(asset)` | – | Read aggregate pool state |
 | `total_liquidity(asset)` | – | Read total liquidity for an asset |
@@ -84,6 +85,7 @@ state.
 | `extend_instance_ttl(caller)` | admin or operator | Extend the contract instance/code TTL so it survives long inactivity |
 | `set_fee(bps)` | admin | Set the protocol fee in basis points (max 1000) |
 | `fee()` / `quote_fee(asset, amount)` | – | Read the global fee rate / preview the effective fee for an asset |
+| `max_fee_bps()` | – | Read the maximum fee `set_fee`/`set_asset_fee` will accept |
 | `set_asset_fee(asset, bps)` | admin | Override the protocol fee for one asset, independent of the global rate |
 | `clear_asset_fee(asset)` | admin | Remove an asset's fee override, reverting it to the global rate |
 | `asset_fee(asset)` | – | Read the effective fee for an asset (its override, or the global rate) |
@@ -112,6 +114,8 @@ state.
 | `list_settlements_by_anchor(anchor, start, limit)` | – | Page through settlements opened by one anchor |
 | `list_settlements_by_asset(asset, start, limit)` | – | Page through settlements in one asset |
 | `list_settlements_by_status(status, start, limit)` | – | Page through settlements in a given lifecycle state |
+| `settlement_count_by_status(status)` | – | Count every settlement in a given lifecycle state (no pagination) |
+| `contract_info()` | – | One-call snapshot of version, paused flag, fee, and anchor/asset/settlement counts |
 
 `cancel_expired_settlement` requires no authorization: it only ever returns
 liquidity to the shared pool it was reserved from, never to an external
