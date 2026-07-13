@@ -48,4 +48,6 @@ pub enum Error {
     BelowMinLiquidity = 17,
     /// No operator has been appointed.
     NoOperator = 18,
+    /// The settlement amount exceeds the configured per-asset maximum.
+    AboveMaxSettlementAmount = 19,
 }
