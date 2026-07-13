@@ -502,12 +502,13 @@ fn test_quote_fee_preview() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
     client.initialize(&admin);
     client.set_fee(&250); // 2.5%
 
-    assert_eq!(client.quote_fee(&1_000), 25);
+    assert_eq!(client.quote_fee(&asset, &1_000), 25);
 
-    let err = client.try_quote_fee(&0).err().unwrap().unwrap();
+    let err = client.try_quote_fee(&asset, &0).err().unwrap().unwrap();
     assert_eq!(err, Error::InvalidAmount);
 }
 
@@ -1036,12 +1037,13 @@ fn test_quote_fee_overflow_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
 
     client.initialize(&admin);
     client.set_fee(&100); // 1%
                           // `amount * fee_bps` overflows i128 long before the division by the bps
                           // denominator brings it back into range.
-    client.quote_fee(&i128::MAX);
+    client.quote_fee(&asset, &i128::MAX);
 }
 
 #[test]

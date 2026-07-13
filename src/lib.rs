@@ -181,13 +181,14 @@ impl AnchornetContract {
         storage::get_fee_bps(&env)
     }
 
-    /// Previews the protocol fee charged for settling `amount` at the current
-    /// fee rate, without changing any state.
-    pub fn quote_fee(env: Env, amount: i128) -> Result<i128, Error> {
+    /// Previews the protocol fee charged for settling `amount` of `asset` at
+    /// the current fee rate (respecting any [`asset_fee`](Self::asset_fee)
+    /// override), without changing any state.
+    pub fn quote_fee(env: Env, asset: Symbol, amount: i128) -> Result<i128, Error> {
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        Ok(amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR)
+        Ok(amount * (Self::effective_fee_bps(&env, &asset) as i128) / BPS_DENOMINATOR)
     }
 
     /// Grants or revokes a protocol fee waiver for `anchor`. While waived,
@@ -207,6 +208,34 @@ impl AnchornetContract {
     /// settlement fees.
     pub fn is_fee_waived(env: Env, anchor: Address) -> bool {
         storage::is_fee_waived(&env, &anchor)
+    }
+
+    /// Overrides the protocol fee for `asset`, in basis points (max 1000 =
+    /// 10%), independent of the global rate set via
+    /// [`set_fee`](Self::set_fee). Admin only.
+    pub fn set_asset_fee(env: Env, asset: Symbol, bps: u32) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        if bps > MAX_FEE_BPS {
+            return Err(Error::InvalidFee);
+        }
+        storage::set_asset_fee(&env, &asset, bps);
+        events::asset_fee_changed(&env, &asset, bps);
+        Ok(())
+    }
+
+    /// Clears any fee override for `asset`, reverting it to the global fee.
+    /// Admin only.
+    pub fn clear_asset_fee(env: Env, asset: Symbol) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::clear_asset_fee(&env, &asset);
+        events::asset_fee_cleared(&env, &asset);
+        Ok(())
+    }
+
+    /// Returns the effective protocol fee for `asset`, in basis points: its
+    /// override if one is configured, otherwise the global fee.
+    pub fn asset_fee(env: Env, asset: Symbol) -> u32 {
+        Self::effective_fee_bps(&env, &asset)
     }
 
     /// Sets the number of ledgers a pending settlement may remain open before
@@ -508,7 +537,7 @@ impl AnchornetContract {
         let fee = if storage::is_fee_waived(&env, &anchor) {
             0
         } else {
-            amount * (storage::get_fee_bps(&env) as i128) / BPS_DENOMINATOR
+            amount * (Self::effective_fee_bps(&env, &asset) as i128) / BPS_DENOMINATOR
         };
         let id = storage::get_settlement_count(&env) + 1;
         storage::set_settlement_count(&env, id);
@@ -853,6 +882,12 @@ impl AnchornetContract {
             return Err(Error::BelowMinLiquidity);
         }
         Ok(())
+    }
+
+    /// Returns the effective protocol fee for `asset`, in basis points: its
+    /// per-asset override if one is configured, otherwise the global fee.
+    fn effective_fee_bps(env: &Env, asset: &Symbol) -> u32 {
+        storage::get_asset_fee(env, asset).unwrap_or_else(|| storage::get_fee_bps(env))
     }
 
     /// Moves `amount` of `asset` out of `provider`'s balance and the pool
