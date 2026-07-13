@@ -69,6 +69,8 @@ state.
 | `asset_count()` | – | Read the number of distinct assets that have ever had liquidity provided |
 | `set_min_liquidity(asset, floor)` | admin | Set the minimum liquidity floor an asset's pool may not be withdrawn below (0 disables) |
 | `min_liquidity(asset)` | – | Read the minimum liquidity floor configured for an asset |
+| `set_max_settlement_amount(asset, amount)` | admin | Cap the amount a single settlement may reserve for an asset (0 disables) |
+| `max_settlement_amount(asset)` | – | Read the maximum settlement amount configured for an asset |
 
 ### Admin & lifecycle
 
@@ -79,8 +81,12 @@ state.
 | `set_operator(operator)` | admin | Appoint an operator that may pause/unpause but cannot change fees or admin |
 | `operator()` | – | Read the currently appointed operator |
 | `is_operator(address)` | – | Check whether an address is the currently appointed operator |
+| `extend_instance_ttl(caller)` | admin or operator | Extend the contract instance/code TTL so it survives long inactivity |
 | `set_fee(bps)` | admin | Set the protocol fee in basis points (max 1000) |
-| `fee()` / `quote_fee(amount)` | – | Read the fee rate / preview a fee |
+| `fee()` / `quote_fee(asset, amount)` | – | Read the global fee rate / preview the effective fee for an asset |
+| `set_asset_fee(asset, bps)` | admin | Override the protocol fee for one asset, independent of the global rate |
+| `clear_asset_fee(asset)` | admin | Remove an asset's fee override, reverting it to the global rate |
+| `asset_fee(asset)` | – | Read the effective fee for an asset (its override, or the global rate) |
 | `collect_fees(asset)` | admin | Collect accrued protocol fees for an asset |
 | `fees_accrued(asset)` | – | Read uncollected fees for an asset |
 | `total_fees_accrued()` | – | Read the sum of uncollected fees across every asset ever funded |
