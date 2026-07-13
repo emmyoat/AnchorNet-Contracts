@@ -114,3 +114,10 @@ pub fn operator_changed(env: &Env, operator: &Address) {
     env.events()
         .publish((symbol_short!("operator"),), operator.clone());
 }
+
+/// Emitted when an asset's maximum settlement amount changes. Topics:
+/// `("maxamt", asset)`, data: `i128` amount.
+pub fn max_settlement_amount_changed(env: &Env, asset: &Symbol, amount: i128) {
+    env.events()
+        .publish((symbol_short!("maxamt"), asset.clone()), amount);
+}
