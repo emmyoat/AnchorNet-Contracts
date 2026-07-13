@@ -2377,3 +2377,52 @@ fn test_total_settled_amount_is_zero_with_no_settlements() {
 
     assert_eq!(client.total_settled_amount(&SettlementStatus::Pending), 0);
 }
+
+#[test]
+fn test_anchor_balances_lists_only_nonzero_holdings() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+    let xlm = symbol_short!("XLM");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &usdc, &500);
+    client.provide_liquidity(&anchor, &eurc, &200);
+    // XLM gets funded by a different anchor, so it's known to the contract
+    // but this anchor holds none of it.
+    let other = Address::generate(&env);
+    client.register_anchor(&other);
+    client.provide_liquidity(&other, &xlm, &1_000);
+
+    let balances = client.anchor_balances(&anchor, &0, &10);
+
+    assert_eq!(balances.len(), 2);
+    assert_eq!(balances.get(0).unwrap(), (usdc, 500));
+    assert_eq!(balances.get(1).unwrap(), (eurc, 200));
+}
+
+#[test]
+fn test_anchor_balances_respects_limit() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.provide_liquidity(&anchor, &symbol_short!("USDC"), &100);
+    client.provide_liquidity(&anchor, &symbol_short!("EURC"), &100);
+
+    assert_eq!(client.anchor_balances(&anchor, &0, &1).len(), 1);
+}
+
+#[test]
+fn test_anchor_balances_empty_for_a_provider_with_no_liquidity() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+    let stranger = Address::generate(&env);
+
+    assert_eq!(client.anchor_balances(&stranger, &0, &10).len(), 0);
+}
