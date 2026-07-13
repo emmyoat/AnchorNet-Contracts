@@ -49,7 +49,7 @@ impl AnchornetContract {
 
     /// Returns the contract interface version.
     pub fn version() -> u32 {
-        6
+        7
     }
 
     /// Returns `true` if the contract has been initialized.
