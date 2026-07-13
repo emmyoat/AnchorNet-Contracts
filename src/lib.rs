@@ -496,6 +496,47 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Withdraws liquidity from multiple assets for `provider` in a single
+    /// call and authorization. Every `(asset, amount)` request is validated
+    /// (positive amount, no asset repeated, sufficient balance, and the
+    /// minimum liquidity floor) before any of them are applied, so one bad
+    /// entry never leaves a partial batch withdrawn. Fails with
+    /// [`Error::DuplicateAssetInBatch`] if the same asset appears more than
+    /// once; use a single combined amount instead.
+    pub fn withdraw_liquidity_multi(
+        env: Env,
+        provider: Address,
+        requests: Vec<(Symbol, i128)>,
+    ) -> Result<(), Error> {
+        provider.require_auth();
+        Self::require_not_paused(&env)?;
+        if requests.is_empty() {
+            return Err(Error::InvalidAmount);
+        }
+
+        let mut seen = Vec::new(&env);
+        for (asset, amount) in requests.iter() {
+            if amount <= 0 {
+                return Err(Error::InvalidAmount);
+            }
+            if seen.contains(&asset) {
+                return Err(Error::DuplicateAssetInBatch);
+            }
+            seen.push_back(asset.clone());
+
+            let prior = storage::get_balance(&env, &provider, &asset);
+            if prior < amount {
+                return Err(Error::InsufficientLiquidity);
+            }
+            Self::require_min_liquidity(&env, &asset, amount)?;
+        }
+
+        for (asset, amount) in requests.iter() {
+            Self::do_withdraw(&env, &provider, &asset, amount);
+        }
+        Ok(())
+    }
+
     /// Withdraws `provider`'s entire liquidity balance in `asset` in a single
     /// call, returning the withdrawn amount. A convenience wrapper around
     /// [`withdraw_liquidity`](Self::withdraw_liquidity) for providers exiting
