@@ -2076,3 +2076,43 @@ fn test_extend_instance_ttl_fails_before_initialize() {
         .unwrap();
     assert_eq!(err, Error::NotInitialized);
 }
+
+#[test]
+fn test_settlement_count_by_status_counts_across_full_history() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+
+    client.open_settlement(&anchor, &asset, &100);
+    let executed = client.open_settlement(&anchor, &asset, &100);
+    let cancelled = client.open_settlement(&anchor, &asset, &100);
+    client.execute_settlement(&executed);
+    client.cancel_settlement(&cancelled);
+
+    assert_eq!(
+        client.settlement_count_by_status(&SettlementStatus::Pending),
+        1
+    );
+    assert_eq!(
+        client.settlement_count_by_status(&SettlementStatus::Executed),
+        1
+    );
+    assert_eq!(
+        client.settlement_count_by_status(&SettlementStatus::Cancelled),
+        1
+    );
+    assert_eq!(
+        client.settlement_count_by_status(&SettlementStatus::Expired),
+        0
+    );
+}
+
+#[test]
+fn test_settlement_count_by_status_is_zero_with_no_settlements() {
+    let env = Env::default();
+    let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
+
+    assert_eq!(
+        client.settlement_count_by_status(&SettlementStatus::Pending),
+        0
+    );
+}
