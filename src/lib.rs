@@ -947,6 +947,25 @@ impl AnchornetContract {
         }
         total
     }
+
+    /// Returns the sum of `amount` across every settlement currently in
+    /// `status`, scanning the full settlement history. Useful alongside
+    /// [`settlement_count_by_status`](Self::settlement_count_by_status) for
+    /// off-chain volume dashboards.
+    pub fn total_settled_amount(env: Env, status: SettlementStatus) -> i128 {
+        let count = storage::get_settlement_count(&env);
+        let mut total: i128 = 0;
+        let mut id = 1;
+        while id <= count {
+            if let Some(settlement) = storage::get_settlement(&env, id) {
+                if settlement.status == status {
+                    total += settlement.amount;
+                }
+            }
+            id += 1;
+        }
+        total
+    }
 }
 
 impl AnchornetContract {
