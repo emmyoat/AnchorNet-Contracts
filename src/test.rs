@@ -2252,3 +2252,101 @@ fn test_withdraw_liquidity_multi_respects_min_liquidity_floor() {
         .unwrap();
     assert_eq!(err, Error::BelowMinLiquidity);
 }
+
+#[test]
+fn test_provide_liquidity_multi_funds_every_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let usdc = symbol_short!("USDC");
+    let eurc = symbol_short!("EURC");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    let requests = vec![&env, (usdc.clone(), 400), (eurc.clone(), 200)];
+    client.provide_liquidity_multi(&anchor, &requests);
+
+    assert_eq!(client.balance(&anchor, &usdc), 400);
+    assert_eq!(client.balance(&anchor, &eurc), 200);
+    assert_eq!(client.total_liquidity(&usdc), 400);
+    assert_eq!(client.total_liquidity(&eurc), 200);
+}
+
+#[test]
+fn test_provide_liquidity_multi_rejects_unregistered_anchor() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let stranger = Address::generate(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+
+    let requests = vec![&env, (asset.clone(), 100)];
+    let err = client
+        .try_provide_liquidity_multi(&stranger, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AnchorNotRegistered);
+}
+
+#[test]
+fn test_provide_liquidity_multi_rejects_duplicate_asset() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    let requests = vec![&env, (asset.clone(), 100), (asset.clone(), 100)];
+    let err = client
+        .try_provide_liquidity_multi(&anchor, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::DuplicateAssetInBatch);
+
+    // Neither leg was applied.
+    assert_eq!(client.balance(&anchor, &asset), 0);
+}
+
+#[test]
+fn test_provide_liquidity_multi_rejects_empty_batch() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    let empty: soroban_sdk::Vec<(Symbol, i128)> = vec![&env];
+    let err = client
+        .try_provide_liquidity_multi(&anchor, &empty)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::InvalidAmount);
+}
+
+#[test]
+fn test_provide_liquidity_multi_blocked_while_paused() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+    client.pause(&admin);
+
+    let requests = vec![&env, (asset.clone(), 100)];
+    let err = client
+        .try_provide_liquidity_multi(&anchor, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::Paused);
+}
