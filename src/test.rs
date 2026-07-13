@@ -2149,3 +2149,18 @@ fn test_contract_info_before_any_activity() {
     assert_eq!(info.asset_count, 0);
     assert_eq!(info.settlement_count, 0);
 }
+
+#[test]
+fn test_max_fee_bps_matches_set_fee_cap() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    client.initialize(&admin);
+
+    let cap = client.max_fee_bps();
+    client.set_fee(&cap);
+    assert_eq!(client.fee(), cap);
+
+    let err = client.try_set_fee(&(cap + 1)).err().unwrap().unwrap();
+    assert_eq!(err, Error::InvalidFee);
+}
