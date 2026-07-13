@@ -2,6 +2,28 @@
 
 All notable changes to the AnchorNet contracts are documented here.
 
+## [0.7.0]
+
+### Added
+
+- **Settlements:** `set_max_settlement_amount`/`max_settlement_amount` — an
+  admin-configurable per-asset cap on the amount a single `open_settlement`
+  call may reserve (disabled by default), enforced with a new
+  `Error::AboveMaxSettlementAmount`.
+- **Fees:** `set_asset_fee`/`clear_asset_fee`/`asset_fee` — an admin-configurable
+  per-asset fee override, independent of the global rate, respected by both
+  `quote_fee` (now asset-scoped) and `open_settlement`'s fee calculation. A
+  fee waiver still takes precedence over any override.
+- **Operations:** `extend_instance_ttl`, callable by the admin or operator, to
+  extend the contract instance/code TTL and avoid archival during long
+  inactivity.
+
+### Changed
+
+- `quote_fee` now takes an `asset` parameter so its preview matches the fee
+  actually charged for that asset (a breaking signature change, acceptable
+  pre-1.0).
+
 ## [0.6.0]
 
 ### Added
