@@ -50,4 +50,6 @@ pub enum Error {
     NoOperator = 18,
     /// The settlement amount exceeds the configured per-asset maximum.
     AboveMaxSettlementAmount = 19,
+    /// The same asset appeared more than once in a batch operation.
+    DuplicateAssetInBatch = 20,
 }
