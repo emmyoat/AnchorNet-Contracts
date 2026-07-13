@@ -121,3 +121,17 @@ pub fn max_settlement_amount_changed(env: &Env, asset: &Symbol, amount: i128) {
     env.events()
         .publish((symbol_short!("maxamt"), asset.clone()), amount);
 }
+
+/// Emitted when an asset's fee override is set. Topics: `("assetfee",
+/// asset)`, data: `u32` bps.
+pub fn asset_fee_changed(env: &Env, asset: &Symbol, bps: u32) {
+    env.events()
+        .publish((symbol_short!("assetfee"), asset.clone()), bps);
+}
+
+/// Emitted when an asset's fee override is cleared, reverting it to the
+/// global fee. Topics: `("feeclear", asset)`.
+pub fn asset_fee_cleared(env: &Env, asset: &Symbol) {
+    env.events()
+        .publish((symbol_short!("feeclear"), asset.clone()), ());
+}
