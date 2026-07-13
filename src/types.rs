@@ -63,3 +63,22 @@ pub struct Settlement {
     /// determine expiry via the contract-wide settlement expiry window.
     pub opened_at: u32,
 }
+
+/// A one-call snapshot of overall contract state, for off-chain dashboards
+/// and indexers that would otherwise need several separate calls.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractInfo {
+    /// The contract interface version (see `AnchornetContract::version`).
+    pub version: u32,
+    /// Whether the contract is currently paused.
+    pub paused: bool,
+    /// The global protocol fee, in basis points.
+    pub fee_bps: u32,
+    /// Number of currently registered anchors.
+    pub anchor_count: u32,
+    /// Number of distinct assets that have ever had liquidity provided.
+    pub asset_count: u32,
+    /// Total number of settlements ever opened.
+    pub settlement_count: u64,
+}
