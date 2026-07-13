@@ -191,6 +191,13 @@ impl AnchornetContract {
         storage::get_fee_bps(&env)
     }
 
+    /// Returns the maximum protocol fee, in basis points, that
+    /// [`set_fee`](Self::set_fee) and [`set_asset_fee`](Self::set_asset_fee)
+    /// will accept, so off-chain clients don't need to hardcode it.
+    pub fn max_fee_bps() -> u32 {
+        MAX_FEE_BPS
+    }
+
     /// Previews the protocol fee charged for settling `amount` of `asset` at
     /// the current fee rate (respecting any [`asset_fee`](Self::asset_fee)
     /// override), without changing any state.
