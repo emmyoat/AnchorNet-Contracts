@@ -67,6 +67,15 @@ fn extend(env: &Env, key: &DataKey) {
         .extend_ttl(key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
+/// Extends the TTL of the contract instance and code, using the same
+/// threshold/bump policy as individual persistent entries, so the contract
+/// itself does not expire during a long period of inactivity.
+pub fn extend_instance_ttl(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+}
+
 /// Returns `true` once an administrator has been set.
 pub fn has_admin(env: &Env) -> bool {
     env.storage().instance().has(&DataKey::Admin)
