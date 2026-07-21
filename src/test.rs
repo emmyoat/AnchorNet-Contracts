@@ -522,6 +522,41 @@ fn test_execute_twice_fails() {
 }
 
 #[test]
+fn test_execute_cancelled_settlement_fails() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+    let id = client.open_settlement(&anchor, &asset, &400);
+    client.cancel_settlement(&id);
+
+    assert_eq!(client.settlement(&id).status, SettlementStatus::Cancelled);
+    assert_eq!(client.fees_accrued(&asset), 0);
+
+    let err = client.try_execute_settlement(&id).err().unwrap().unwrap();
+    assert_eq!(err, Error::InvalidSettlementState);
+    assert_eq!(client.fees_accrued(&asset), 0);
+}
+
+#[test]
+fn test_execute_expired_settlement_fails() {
+    let env = Env::default();
+    let (client, _admin, anchor, asset) = funded(&env, 1_000);
+    client.set_fee(&100); // 1%
+    client.set_settlement_expiry_ledgers(&10);
+    let id = client.open_settlement(&anchor, &asset, &400);
+
+    env.ledger().set_sequence_number(10);
+    client.cancel_expired_settlement(&id);
+
+    assert_eq!(client.settlement(&id).status, SettlementStatus::Expired);
+    assert_eq!(client.fees_accrued(&asset), 0);
+
+    let err = client.try_execute_settlement(&id).err().unwrap().unwrap();
+    assert_eq!(err, Error::InvalidSettlementState);
+    assert_eq!(client.fees_accrued(&asset), 0);
+}
+
+#[test]
 fn test_cancel_executed_fails() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
