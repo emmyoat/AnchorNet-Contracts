@@ -1251,6 +1251,21 @@ fn test_propose_admin_overwrites_prior_proposal() {
 }
 
 #[test]
+fn test_propose_admin_rejects_current_admin() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+
+    client.initialize(&admin);
+    let err = client.try_propose_admin(&admin).err().unwrap().unwrap();
+
+    assert_eq!(err, Error::InvalidAdminCandidate);
+    // No pending admin was set.
+    let err = client.try_pending_admin().err().unwrap().unwrap();
+    assert_eq!(err, Error::NoPendingAdmin);
+}
+
+#[test]
 fn test_pending_admin_unset_by_default() {
     let env = Env::default();
     let (client, admin) = setup(&env);
@@ -1889,8 +1904,7 @@ fn test_register_anchors_batch_failure_emits_zero_events() {
     client.register_anchor(&a1);
 
     let a2 = Address::generate(&env);
-    let _ = client
-        .try_register_anchors(&vec![&env, a2.clone(), a1.clone()]);
+    let _ = client.try_register_anchors(&vec![&env, a2.clone(), a1.clone()]);
 
     let events = env.events().all();
     assert_eq!(events, vec![&env]);
@@ -3209,7 +3223,7 @@ fn test_provide_liquidity_multi_tracks_providers_independently() {
     let asset1 = symbol_short!("AST1");
     let asset2 = symbol_short!("AST2");
     let asset3 = symbol_short!("AST3");
-    
+
     client.initialize(&admin);
     client.register_anchor(&anchor1);
     client.register_anchor(&anchor2);
