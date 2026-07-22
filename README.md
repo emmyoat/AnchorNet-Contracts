@@ -83,8 +83,8 @@ state.
 | Function | Auth | Description |
 |----------|------|-------------|
 | `pause(caller)` / `unpause(caller)` | admin or operator | Halt or resume liquidity & settlement mutations |
-| `is_paused()` | – | Read the paused flag |
 | `set_operator(operator)` | admin | Appoint an operator that may pause/unpause but cannot change fees or admin |
+| `clear_operator()` | admin | Revoke the operator role entirely |
 | `operator()` | – | Read the currently appointed operator |
 | `is_operator(address)` | – | Check whether an address is the currently appointed operator |
 | `extend_instance_ttl(caller)` | admin or operator | Extend the contract instance/code TTL so it survives long inactivity |
@@ -127,6 +127,7 @@ produces a fee of 1. This rounding behavior is an accepted protocol tradeoff.
 | `list_settlements(start, limit)` | – | Page through settlements |
 | `list_settlements_by_anchor(anchor, start, limit)` | – | Page through settlements opened by one anchor |
 | `list_settlements_by_asset(asset, start, limit)` | – | Page through settlements in one asset |
+| `list_settlements_by_anchor_and_asset(anchor, asset, start, limit)` | – | Page through settlements matching both anchor and asset |
 | `list_settlements_by_status(status, start, limit)` | – | Page through settlements in a given lifecycle state |
 | `settlement_count_by_status(status)` | – | Count every settlement in a given lifecycle state (no pagination) |
 | `total_settled_amount(status)` | – | Sum settled `amount` across every settlement in a given lifecycle state |
@@ -191,16 +192,17 @@ verify the boundary without reading individual doc comments.
 - `("anchor", anchor)` / `("deanchor", anchor)` – anchor registered / removed
 - `("provide", provider, asset)` – liquidity provided
 - `("withdraw", provider, asset)` – liquidity withdrawn
-- `("paused",)` – paused flag changed; data is `true` when pausing, `false` when unpausing
-- `("fee",)` – protocol fee changed
+- `("paused",)` – paused flag flipped (data: `bool`)
+- `("fee",)` – fee rate changed (data: `u32` bps)
 - `("waiver", anchor)` – anchor fee waiver granted or revoked
 - `("settle", anchor, asset)` – settlement opened
 - `("executed", id)` / `("cancelled", id)` – settlement finalized / cancelled
 - `("expired", id)` – settlement reclaimed after timing out
 - `("expiry",)` – settlement expiry window changed
 - `("collect", asset)` – fees collected
-- `("minliq", asset)` – asset minimum liquidity floor changed
+- `("minliq", asset)` – minimum liquidity floor configured
 - `("operator",)` – operator appointed or replaced
+- `("op_clear",)` – operator role revoked
 
 ## Contract metadata
 

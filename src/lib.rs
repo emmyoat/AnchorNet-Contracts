@@ -133,6 +133,16 @@ impl AnchornetContract {
         Ok(())
     }
 
+    /// Revokes the operator role, returning the contract to an operator-less
+    /// state where no address has delegated pause/unpause authority.
+    /// Admin only.
+    pub fn clear_operator(env: Env) -> Result<(), Error> {
+        Self::require_admin(&env)?;
+        storage::clear_operator(&env);
+        events::operator_cleared(&env);
+        Ok(())
+    }
+
     /// Returns the currently appointed operator, or [`Error::NoOperator`] if
     /// none has been appointed.
     pub fn operator(env: Env) -> Result<Address, Error> {
@@ -1012,6 +1022,30 @@ impl AnchornetContract {
         while id <= count && (out.len() as u32) < limit {
             if let Some(settlement) = storage::get_settlement(&env, id) {
                 if settlement.asset == asset {
+                    out.push_back(settlement);
+                }
+            }
+            id += 1;
+        }
+        out
+    }
+
+    /// Returns up to `limit` settlements matching both `anchor` and `asset`,
+    /// starting at id `start` (inclusive). Ids are assigned sequentially from 1;
+    /// missing or non-matching ids are skipped without counting toward `limit`.
+    pub fn list_settlements_by_anchor_and_asset(
+        env: Env,
+        anchor: Address,
+        asset: Symbol,
+        start: u64,
+        limit: u32,
+    ) -> Vec<Settlement> {
+        let mut out = Vec::new(&env);
+        let count = storage::get_settlement_count(&env);
+        let mut id = if start == 0 { 1 } else { start };
+        while id <= count && (out.len() as u32) < limit {
+            if let Some(settlement) = storage::get_settlement(&env, id) {
+                if settlement.anchor == anchor && settlement.asset == asset {
                     out.push_back(settlement);
                 }
             }
