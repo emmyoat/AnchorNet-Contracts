@@ -43,6 +43,18 @@ pub enum SettlementStatus {
     Expired,
 }
 
+/// Registration status of an anchor address.
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AnchorStatus {
+    /// The address has never been registered as an anchor.
+    NeverRegistered,
+    /// The address is currently registered as an active anchor.
+    Active,
+    /// The address was previously registered as an anchor but has been deregistered.
+    Deregistered,
+}
+
 /// A request to draw `amount` of `asset` liquidity for cross-anchor settlement.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]

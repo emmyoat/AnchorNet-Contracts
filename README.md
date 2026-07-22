@@ -58,6 +58,7 @@ state.
 | `register_anchor(anchor)` | admin | Approve an anchor as a liquidity provider |
 | `register_anchors(anchors)` | admin | Approve a batch of anchors atomically in one call |
 | `is_anchor(anchor)` | – | Check whether an address is registered |
+| `anchor_status(anchor)` | – | Read the registration status (`NeverRegistered`, `Active`, or `Deregistered`) of an address |
 | `list_anchors(start, limit)` | – | Page through currently registered anchors |
 | `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |

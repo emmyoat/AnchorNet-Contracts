@@ -1,5 +1,8 @@
 use crate::storage::DataKey;
-use crate::{AnchornetContract, AnchornetContractClient, Error, SettlementStatus, BPS_DENOMINATOR};
+use crate::{
+    AnchornetContract, AnchornetContractClient, AnchorStatus, Error, SettlementStatus,
+    BPS_DENOMINATOR,
+};
 use proptest::prelude::*;
 use soroban_sdk::{
     symbol_short,
@@ -99,6 +102,35 @@ fn test_register_anchor() {
     assert!(!client.is_anchor(&anchor));
 
     client.register_anchor(&anchor);
+    assert!(client.is_anchor(&anchor));
+}
+
+#[test]
+fn test_anchor_status_lifecycle() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+
+    client.initialize(&admin);
+
+    // Initial state: NeverRegistered
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::NeverRegistered);
+    assert!(!client.is_anchor(&anchor));
+
+    // Register anchor: Active
+    client.register_anchor(&anchor);
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::Active);
+    assert!(client.is_anchor(&anchor));
+
+    // Deregister anchor: Deregistered
+    client.deregister_anchor(&anchor);
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::Deregistered);
+    assert!(!client.is_anchor(&anchor));
+
+    // Re-register anchor: Active
+    client.register_anchor(&anchor);
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::Active);
     assert!(client.is_anchor(&anchor));
 }
 
@@ -4836,6 +4868,38 @@ fn test_is_anchor_read_bumps_ttl() {
     assert!(
         after > before,
         "is_anchor read did not bump TTL: before={before}, after={after}",
+    );
+}
+
+#[test]
+fn test_anchor_status_read_bumps_ttl() {
+    let env = Env::default();
+    let (client, _admin, anchor, _asset) = funded(&env, 1_000);
+
+    let key = DataKey::Anchor(anchor.clone());
+
+    // Active state TTL bump check
+    advance_ledger(&env, TTL_DECAY_LEDGERS);
+    let before_active = persistent_ttl(&env, &client.address, &key);
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::Active);
+    let after_active = persistent_ttl(&env, &client.address, &key);
+    assert!(
+        after_active > before_active,
+        "anchor_status read in Active state did not bump TTL: before={before_active}, after={after_active}"
+    );
+
+    // Deregistered state TTL bump check
+    env.mock_all_auths();
+    client.deregister_anchor(&anchor);
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::Deregistered);
+
+    advance_ledger(&env, TTL_DECAY_LEDGERS);
+    let before_dereg = persistent_ttl(&env, &client.address, &key);
+    assert_eq!(client.anchor_status(&anchor), AnchorStatus::Deregistered);
+    let after_dereg = persistent_ttl(&env, &client.address, &key);
+    assert!(
+        after_dereg > before_dereg,
+        "anchor_status read in Deregistered state did not bump TTL: before={before_dereg}, after={after_dereg}"
     );
 }
 
