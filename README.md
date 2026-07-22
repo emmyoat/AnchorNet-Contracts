@@ -205,6 +205,9 @@ verify the boundary without reading individual doc comments.
 - `("expiry",)` – settlement expiry window changed
 - `("collect", asset)` – fees collected
 - `("minliq", asset)` – minimum liquidity floor configured
+- `("maxamt", asset)` – maximum settlement amount configured
+- `("assetfee", asset)` – asset-specific fee override set (data: `u32` bps)
+- `("feeclear", asset)` – asset-specific fee override cleared
 - `("operator",)` – operator appointed or replaced
 - `("op_clear",)` – operator role revoked
 

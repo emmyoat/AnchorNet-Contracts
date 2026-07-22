@@ -2608,6 +2608,30 @@ fn test_set_min_liquidity_updates_value() {
 }
 
 #[test]
+fn test_set_min_liquidity_emits_event() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.set_min_liquidity(&asset, &200);
+
+    let events = env.events().all();
+    assert_eq!(
+        events,
+        vec![
+            &env,
+            (
+                client.address.clone(),
+                (symbol_short!("minliq"), asset.clone()).into_val(&env),
+                200i128.into_val(&env),
+            ),
+        ]
+    );
+}
+
+#[test]
 fn test_set_min_liquidity_rejects_negative_floor() {
     let env = Env::default();
     let (client, _admin, _anchor, asset) = funded(&env, 1_000);
@@ -3134,6 +3158,30 @@ fn test_set_max_settlement_amount_updates_value() {
 }
 
 #[test]
+fn test_set_max_settlement_amount_emits_event() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.set_max_settlement_amount(&asset, &500);
+
+    let events = env.events().all();
+    assert_eq!(
+        events,
+        vec![
+            &env,
+            (
+                client.address.clone(),
+                (symbol_short!("maxamt"), asset.clone()).into_val(&env),
+                500i128.into_val(&env),
+            ),
+        ]
+    );
+}
+
+#[test]
 fn test_set_max_settlement_amount_rejects_negative_value() {
     let env = Env::default();
     let (client, _admin, _anchor, asset) = funded(&env, 1_000);
@@ -3241,6 +3289,56 @@ fn test_clear_asset_fee_reverts_to_global() {
     client.clear_asset_fee(&asset);
 
     assert_eq!(client.asset_fee(&asset), 100);
+}
+
+#[test]
+fn test_set_asset_fee_emits_event() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.set_asset_fee(&asset, &250);
+
+    let events = env.events().all();
+    assert_eq!(
+        events,
+        vec![
+            &env,
+            (
+                client.address.clone(),
+                (symbol_short!("assetfee"), asset.clone()).into_val(&env),
+                250u32.into_val(&env),
+            ),
+        ]
+    );
+}
+
+#[test]
+fn test_clear_asset_fee_emits_event() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+
+    client.initialize(&admin);
+    client.set_asset_fee(&asset, &250);
+
+    client.clear_asset_fee(&asset);
+
+    let events = env.events().all();
+    assert_eq!(
+        events,
+        vec![
+            &env,
+            (
+                client.address.clone(),
+                (symbol_short!("feeclear"), asset.clone()).into_val(&env),
+                ().into_val(&env),
+            ),
+        ]
+    );
 }
 
 #[test]
