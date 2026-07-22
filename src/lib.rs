@@ -1227,8 +1227,11 @@ impl AnchornetContract {
         let new_balance = prior.checked_add(amount).ok_or(Error::Overflow)?;
         storage::set_pool(env, asset, &pool);
         storage::set_balance(env, provider, asset, new_balance);
-        storage::remember_asset(env, asset);
+        let is_new = storage::remember_asset(env, asset);
         events::liquidity_provided(env, provider, asset, amount);
+        if is_new {
+            events::asset_onboarded(env, asset);
+        }
         Ok(())
     }
 

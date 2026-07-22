@@ -59,6 +59,12 @@ pub fn liquidity_provided(env: &Env, provider: &Address, asset: &Symbol, amount:
     );
 }
 
+/// Emitted when an asset is first provided liquidity (onboarded). Topics: `("onboarded", asset)`.
+pub fn asset_onboarded(env: &Env, asset: &Symbol) {
+    env.events()
+        .publish((symbol_short!("onboarded"), asset.clone()), ());
+}
+
 /// Emitted when liquidity is withdrawn. Topics: `("withdraw", provider, asset)`, data: `amount`.
 ///
 /// Both [`withdraw_liquidity`](crate::AnchornetContract::withdraw_liquidity)
