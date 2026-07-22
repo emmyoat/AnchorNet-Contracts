@@ -35,6 +35,7 @@ cargo test
 - [`docs/ADMIN.md`](docs/ADMIN.md) – privileged admin/operator roles, lifecycle, and security properties
 - [`docs/ERRORS.md`](docs/ERRORS.md) – stable error-code reference and originating entrypoints
 - [`docs/PAGINATION.md`](docs/PAGINATION.md) – stable pagination semantics reference and worked examples
+- [`docs/EVENTS.md`](docs/EVENTS.md) – event topics, argument types, and indexer integration guide
 - `src/types.rs` – on-chain data types (`Pool`)
 - `src/storage.rs` – storage keys and TTL-aware accessors
 - `src/events.rs` – event publishing helpers
@@ -61,10 +62,10 @@ state.
 | `list_anchors(start, limit)` | – | Page through currently registered anchors |
 | `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
-| `provide_liquidity_multi(provider, requests)` | provider | Add liquidity to several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of it |
+| `provide_liquidity_multi(provider, requests)` | provider | Add liquidity to several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of i[...]
 | `withdraw_liquidity(provider, asset, amount)` | provider | Remove liquidity from a pool |
 | `withdraw_all_liquidity(provider, asset)` | provider | Withdraw a provider's entire balance in one call |
-| `withdraw_liquidity_multi(provider, requests)` | provider | Withdraw from several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of it |
+| `withdraw_liquidity_multi(provider, requests)` | provider | Withdraw from several assets in one call and authorization; validates the whole batch (no duplicate assets) before applying any of it [...]
 | `deregister_anchor(anchor)` | admin | Remove an anchor from the approved set |
 | `pool(asset)` | – | Read aggregate pool state |
 | `total_liquidity(asset)` | – | Read total liquidity for an asset |
@@ -89,7 +90,7 @@ state.
 | `is_operator(address)` | – | Check whether an address is the currently appointed operator |
 | `extend_instance_ttl(caller)` | admin or operator | Extend the contract instance/code TTL so it survives long inactivity |
 
-> **Note:** `extend_instance_ttl` only refreshes the **instance** storage bucket. Persistent entries (e.g., `Anchor`, `Pool`, `Balance`, etc.) have independent TTLs managed by per‑key `extend` calls on read/write.
+> **Note:** `extend_instance_ttl` only refreshes the **instance** storage bucket. Persistent entries (e.g., `Anchor`, `Pool`, `Balance`, etc.) have independent TTLs managed by per‑key `extend` c[...]
 
 | `set_fee(bps)` | admin | Set the protocol fee in basis points (max 1000) |
 | `fee()` / `quote_fee(asset, amount)` | – | Read the global fee rate / preview the effective fee for an asset |
@@ -189,6 +190,10 @@ verify the boundary without reading individual doc comments.
 
 ### Events
 
+For detailed event documentation, including argument shapes, emission sites, and indexer integration guidance, see [`docs/EVENTS.md`](docs/EVENTS.md).
+
+**Event topics at a glance:**
+
 - `("init",)` – contract initialized
 - `("admin",)` – administrator changed (via `set_admin` or `accept_admin`)
 - `("propose",)` – admin transfer proposed
@@ -205,6 +210,9 @@ verify the boundary without reading individual doc comments.
 - `("expiry",)` – settlement expiry window changed
 - `("collect", asset)` – fees collected
 - `("minliq", asset)` – minimum liquidity floor configured
+- `("maxamt", asset)` – maximum settlement amount configured
+- `("assetfee", asset)` – asset-specific fee override set (data: `u32` bps)
+- `("feeclear", asset)` – asset-specific fee override cleared
 - `("operator",)` – operator appointed or replaced
 - `("op_clear",)` – operator role revoked
 
