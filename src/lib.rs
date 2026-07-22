@@ -788,6 +788,15 @@ impl AnchornetContract {
         Ok(env.ledger().sequence() >= settlement.opened_at + expiry)
     }
 
+    /// Returns the age of the settlement with `id` in ledgers elapsed since it
+    /// was opened (using the simulated ledger sequence, not wall-clock time).
+    /// Returns [`Error::SettlementNotFound`] if the settlement does not exist.
+    /// This is a complementary raw-value view to [`is_settlement_expired`](Self::is_settlement_expired).
+    pub fn settlement_age(env: Env, id: u64) -> Result<u32, Error> {
+        let settlement = storage::get_settlement(&env, id).ok_or(Error::SettlementNotFound)?;
+        Ok(env.ledger().sequence() - settlement.opened_at)
+    }
+
     /// Returns the [`Pool`] for `asset`, or [`Error::PoolNotFound`] if no
     /// liquidity has ever been provided for it.
     pub fn pool(env: Env, asset: Symbol) -> Result<Pool, Error> {
@@ -911,6 +920,24 @@ impl AnchornetContract {
     /// Returns `true` if a settlement with `id` exists.
     pub fn settlement_exists(env: Env, id: u64) -> bool {
         storage::get_settlement(&env, id).is_some()
+    }
+
+    /// Returns `true` if a settlement with `id` exists and its status is
+    /// [`SettlementStatus::Pending`]. Returns `false` (not an error) for a
+    /// missing id or any terminal-state settlement. Designed as a minimal-payload
+    /// primitive purpose-built for a keeper's hot polling path.
+    ///
+    /// Note the distinction from [`settlement_exists`](Self::settlement_exists)
+    /// (which returns true regardless of status), [`settlement`](Self::settlement)
+    /// (which errors on missing and returns the full struct), and
+    /// [`is_settlement_expired`](Self::is_settlement_expired) (which returns true
+    /// only if the settlement is pending AND past its expiry window).
+    pub fn is_settlement_pending(env: Env, id: u64) -> bool {
+        if let Some(settlement) = storage::get_settlement(&env, id) {
+            settlement.status == SettlementStatus::Pending
+        } else {
+            false
+        }
     }
 
     /// Returns up to `limit` settlements starting at id `start` (inclusive).
