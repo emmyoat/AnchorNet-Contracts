@@ -4010,11 +4010,10 @@ fn test_hello() {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// TTL bump-on-read tests for is_fee_waived / get_fees_accrued (issue #121).
-// Each getter now extends its entry's TTL on a successful read, matching what
-// its setter already does. Only the two getters this issue names are covered —
-// balance()'s read-side gap is a separate companion issue and the risk-config
-// getters (min_liquidity / max_settlement_amount / asset_fee) are #122.
+// TTL bump-on-read tests for the risk/fee configuration getters (issue #122)
+// and for is_fee_waived / get_fees_accrued (issue #121). Each getter now
+// extends its entry's TTL on a successful read, matching what its setter
+// already does. balance()'s read-side gap is a separate companion issue.
 //
 // Strategy: configure the value via its setter, advance the ledger far enough
 // that the entry's TTL decays below the extend threshold, snapshot the TTL,
@@ -4052,6 +4051,29 @@ fn seed_fees_accrued(
 }
 
 #[test]
+fn test_min_liquidity_read_bumps_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.set_min_liquidity(&asset, &100);
+
+    let key = DataKey::MinLiquidity(asset.clone());
+    advance_ledger(&env, TTL_DECAY_LEDGERS);
+    let before = persistent_ttl(&env, &client.address, &key);
+
+    // Read-only call: no setter involved.
+    assert_eq!(client.min_liquidity(&asset), 100);
+
+    let after = persistent_ttl(&env, &client.address, &key);
+    assert!(
+        after > before,
+        "min_liquidity read did not bump TTL: before={before}, after={after}",
+    );
+}
+
+#[test]
 fn test_is_fee_waived_read_bumps_ttl() {
     let env = Env::default();
     let (client, _admin, anchor, _asset) = funded(&env, 1_000);
@@ -4061,13 +4083,34 @@ fn test_is_fee_waived_read_bumps_ttl() {
     advance_ledger(&env, TTL_DECAY_LEDGERS);
     let before = persistent_ttl(&env, &client.address, &key);
 
-    // Read-only call: no setter involved.
     assert!(client.is_fee_waived(&anchor));
 
     let after = persistent_ttl(&env, &client.address, &key);
     assert!(
         after > before,
         "is_fee_waived read did not bump TTL: before={before}, after={after}",
+    );
+}
+
+#[test]
+fn test_max_settlement_amount_read_bumps_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.set_max_settlement_amount(&asset, &5_000);
+
+    let key = DataKey::MaxSettlementAmount(asset.clone());
+    advance_ledger(&env, TTL_DECAY_LEDGERS);
+    let before = persistent_ttl(&env, &client.address, &key);
+
+    assert_eq!(client.max_settlement_amount(&asset), 5_000);
+
+    let after = persistent_ttl(&env, &client.address, &key);
+    assert!(
+        after > before,
+        "max_settlement_amount read did not bump TTL: before={before}, after={after}",
     );
 }
 
@@ -4091,6 +4134,28 @@ fn test_get_fees_accrued_read_bumps_ttl() {
 }
 
 #[test]
+fn test_asset_fee_read_bumps_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.set_asset_fee(&asset, &50);
+
+    let key = DataKey::AssetFee(asset.clone());
+    advance_ledger(&env, TTL_DECAY_LEDGERS);
+    let before = persistent_ttl(&env, &client.address, &key);
+
+    assert_eq!(client.asset_fee(&asset), 50);
+
+    let after = persistent_ttl(&env, &client.address, &key);
+    assert!(
+        after > before,
+        "asset_fee read did not bump TTL: before={before}, after={after}",
+    );
+}
+
+#[test]
 fn test_total_fees_accrued_bumps_each_asset_ttl() {
     let env = Env::default();
     let (client, _admin, anchor, asset) = funded(&env, 1_000);
@@ -4109,6 +4174,35 @@ fn test_total_fees_accrued_bumps_each_asset_ttl() {
     assert!(
         after > before,
         "total_fees_accrued did not cascade the TTL bump to the per-asset entry: before={before}, after={after}",
+    );
+}
+
+#[test]
+fn test_min_liquidity_repeated_reads_keep_ttl_fresh() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+    client.set_min_liquidity(&asset, &100);
+
+    let key = DataKey::MinLiquidity(asset.clone());
+
+    // Sustained "set once, read constantly" scenario from the issue's security
+    // notes: each read over an advancing ledger should refresh the TTL, so the
+    // entry never drifts toward archival.
+    for _ in 0..2 {
+        advance_ledger(&env, TTL_DECAY_LEDGERS);
+        let _ = client.min_liquidity(&asset);
+    }
+
+    advance_ledger(&env, TTL_DECAY_LEDGERS);
+    let before = persistent_ttl(&env, &client.address, &key);
+    let _ = client.min_liquidity(&asset);
+    let after = persistent_ttl(&env, &client.address, &key);
+    assert!(
+        after > before,
+        "repeated reads did not keep TTL fresh: before={before}, after={after}",
     );
 }
 
@@ -4136,6 +4230,32 @@ fn test_is_fee_waived_repeated_reads_keep_ttl_fresh() {
         after > before,
         "repeated reads did not keep TTL fresh: before={before}, after={after}",
     );
+}
+
+#[test]
+fn test_min_liquidity_read_on_unconfigured_asset_is_safe() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+
+    // Never configured: the `.has` guard must skip `extend_ttl` (which would
+    // panic on an absent key) and the getter must still return the default.
+    assert_eq!(client.min_liquidity(&asset), 0);
+}
+
+#[test]
+fn test_asset_fee_read_on_unconfigured_asset_is_safe() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let asset = symbol_short!("USDC");
+    client.initialize(&admin);
+
+    // No override configured: `get_asset_fee` returns `None` without trying to
+    // extend an absent entry, so the effective fee falls back to the global fee.
+    assert_eq!(client.asset_fee(&asset), client.fee());
 }
 
 #[test]
