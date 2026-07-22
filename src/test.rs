@@ -114,21 +114,17 @@ fn test_anchor_status_lifecycle() {
 
     client.initialize(&admin);
 
-    // Initial state: NeverRegistered
     assert_eq!(client.anchor_status(&anchor), AnchorStatus::NeverRegistered);
     assert!(!client.is_anchor(&anchor));
 
-    // Register anchor: Active
     client.register_anchor(&anchor);
     assert_eq!(client.anchor_status(&anchor), AnchorStatus::Active);
     assert!(client.is_anchor(&anchor));
 
-    // Deregister anchor: Deregistered
     client.deregister_anchor(&anchor);
     assert_eq!(client.anchor_status(&anchor), AnchorStatus::Deregistered);
     assert!(!client.is_anchor(&anchor));
 
-    // Re-register anchor: Active
     client.register_anchor(&anchor);
     assert_eq!(client.anchor_status(&anchor), AnchorStatus::Active);
     assert!(client.is_anchor(&anchor));
@@ -4878,7 +4874,6 @@ fn test_anchor_status_read_bumps_ttl() {
 
     let key = DataKey::Anchor(anchor.clone());
 
-    // Active state TTL bump check
     advance_ledger(&env, TTL_DECAY_LEDGERS);
     let before_active = persistent_ttl(&env, &client.address, &key);
     assert_eq!(client.anchor_status(&anchor), AnchorStatus::Active);
@@ -4888,7 +4883,6 @@ fn test_anchor_status_read_bumps_ttl() {
         "anchor_status read in Active state did not bump TTL: before={before_active}, after={after_active}"
     );
 
-    // Deregistered state TTL bump check
     env.mock_all_auths();
     client.deregister_anchor(&anchor);
     assert_eq!(client.anchor_status(&anchor), AnchorStatus::Deregistered);

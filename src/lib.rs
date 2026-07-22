@@ -397,9 +397,6 @@ impl AnchornetContract {
         storage::is_anchor(&env, &anchor)
     }
 
-    /// Returns the registration status ([`AnchorStatus`]) of `anchor`:
-    /// [`AnchorStatus::NeverRegistered`], [`AnchorStatus::Active`], or
-    /// [`AnchorStatus::Deregistered`].
     pub fn anchor_status(env: Env, anchor: Address) -> AnchorStatus {
         storage::anchor_status(&env, &anchor)
     }

@@ -196,7 +196,6 @@ pub fn is_anchor(env: &Env, anchor: &Address) -> bool {
     env.storage().persistent().get(&key).unwrap_or(false)
 }
 
-/// Reads the registration status of `anchor`.
 pub fn anchor_status(env: &Env, anchor: &Address) -> AnchorStatus {
     let key = DataKey::Anchor(anchor.clone());
     match env.storage().persistent().get::<DataKey, bool>(&key) {
