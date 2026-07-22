@@ -88,6 +88,9 @@ state.
 | `operator()` | – | Read the currently appointed operator |
 | `is_operator(address)` | – | Check whether an address is the currently appointed operator |
 | `extend_instance_ttl(caller)` | admin or operator | Extend the contract instance/code TTL so it survives long inactivity |
+
+> **Note:** `extend_instance_ttl` only refreshes the **instance** storage bucket. Persistent entries (e.g., `Anchor`, `Pool`, `Balance`, etc.) have independent TTLs managed by per‑key `extend` calls on read/write.
+
 | `set_fee(bps)` | admin | Set the protocol fee in basis points (max 1000) |
 | `fee()` / `quote_fee(asset, amount)` | – | Read the global fee rate / preview the effective fee for an asset |
 | `max_fee_bps()` | – | Read the maximum fee `set_fee`/`set_asset_fee` will accept |
@@ -191,6 +194,7 @@ verify the boundary without reading individual doc comments.
 - `("propose",)` – admin transfer proposed
 - `("anchor", anchor)` / `("deanchor", anchor)` – anchor registered / removed
 - `("provide", provider, asset)` – liquidity provided
+- `("onboarded", asset)` – first liquidity provision for a new asset
 - `("withdraw", provider, asset)` – liquidity withdrawn
 - `("paused",)` – paused flag flipped (data: `bool`)
 - `("fee",)` – fee rate changed (data: `u32` bps)
