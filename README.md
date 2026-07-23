@@ -35,6 +35,7 @@ cargo test
 - [`docs/ADMIN.md`](docs/ADMIN.md) – privileged admin/operator roles, lifecycle, and security properties
 - [`docs/ERRORS.md`](docs/ERRORS.md) – stable error-code reference and originating entrypoints
 - [`docs/PAGINATION.md`](docs/PAGINATION.md) – stable pagination semantics reference and worked examples
+- [`docs/PUBLIC_API_CHECKLIST.md`](docs/PUBLIC_API_CHECKLIST.md) – public API compatibility checklist for reviewing contract signature and type changes
 - `src/types.rs` – on-chain data types (`Pool`)
 - `src/storage.rs` – storage keys and TTL-aware accessors
 - `src/events.rs` – event publishing helpers
@@ -231,8 +232,9 @@ it without an off-chain registry.
 
 1. Fork the repo and create a branch from `main`.
 2. Make changes; keep formatting with `cargo fmt --all`.
-3. Run `cargo fmt --all -- --check`, `cargo build`, and `cargo test`.
-4. Open a pull request. CI will run format check, build, and tests.
+3. If modifying public contract functions, parameters, return types, data structures, error codes, or events, review and complete the [`Public API Compatibility Checklist`](docs/PUBLIC_API_CHECKLIST.md).
+4. Run `cargo fmt --all -- --check`, `cargo build`, and `cargo test`.
+5. Open a pull request. CI will run format check, build, and tests.
 
 ## License
 

@@ -223,10 +223,7 @@ impl AnchornetContract {
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        Self::calculate_fee(
-            amount,
-            Self::effective_fee_bps(&env, &asset),
-        )
+        Self::calculate_fee(amount, Self::effective_fee_bps(&env, &asset))
     }
 
     /// Grants or revokes a protocol fee waiver for `anchor`. While waived,
@@ -729,7 +726,10 @@ impl AnchornetContract {
         }
 
         let mut pool = storage::get_pool(&env, &settlement.asset);
-        pool.total = pool.total.checked_add(settlement.amount).ok_or(Error::Overflow)?;
+        pool.total = pool
+            .total
+            .checked_add(settlement.amount)
+            .ok_or(Error::Overflow)?;
         storage::set_pool(&env, &settlement.asset, &pool);
 
         settlement.status = SettlementStatus::Cancelled;
@@ -780,7 +780,10 @@ impl AnchornetContract {
         }
 
         let mut pool = storage::get_pool(&env, &settlement.asset);
-        pool.total = pool.total.checked_add(settlement.amount).ok_or(Error::Overflow)?;
+        pool.total = pool
+            .total
+            .checked_add(settlement.amount)
+            .ok_or(Error::Overflow)?;
         storage::set_pool(&env, &settlement.asset, &pool);
 
         settlement.status = SettlementStatus::Expired;

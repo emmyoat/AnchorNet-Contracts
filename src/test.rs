@@ -1,6 +1,6 @@
 use crate::storage::DataKey;
 use crate::{
-    AnchornetContract, AnchornetContractClient, AnchorStatus, Error, SettlementStatus,
+    AnchorStatus, AnchornetContract, AnchornetContractClient, Error, SettlementStatus,
     BPS_DENOMINATOR,
 };
 use proptest::prelude::*;
@@ -1255,10 +1255,19 @@ fn test_list_settlements_by_anchor_and_asset_empty_for_unknown() {
     let stranger = Address::generate(&env);
     let other_asset = symbol_short!("EURC");
 
-    assert_eq!(client.list_settlements_by_anchor_and_asset(&stranger, &asset, &1, &10).len(), 0);
-    assert_eq!(client.list_settlements_by_anchor_and_asset(&anchor, &other_asset, &1, &10).len(), 0);
+    assert_eq!(
+        client
+            .list_settlements_by_anchor_and_asset(&stranger, &asset, &1, &10)
+            .len(),
+        0
+    );
+    assert_eq!(
+        client
+            .list_settlements_by_anchor_and_asset(&anchor, &other_asset, &1, &10)
+            .len(),
+        0
+    );
 }
-
 
 #[test]
 fn test_version() {
@@ -2359,8 +2368,22 @@ fn test_clear_operator() {
     assert_eq!(err, Error::NoOperator);
     assert!(!client.is_operator(&operator));
 
-    assert_operator_rejected!(env, client, operator, "pause", (), client.try_pause(&operator));
-    assert_operator_rejected!(env, client, operator, "unpause", (), client.try_unpause(&operator));
+    assert_operator_rejected!(
+        env,
+        client,
+        operator,
+        "pause",
+        (),
+        client.try_pause(&operator)
+    );
+    assert_operator_rejected!(
+        env,
+        client,
+        operator,
+        "unpause",
+        (),
+        client.try_unpause(&operator)
+    );
     assert_operator_rejected!(
         env,
         client,
@@ -2369,7 +2392,7 @@ fn test_clear_operator() {
         (),
         client.try_extend_instance_ttl(&operator)
     );
-    
+
     // Admin can still act
     client.pause(&admin);
     assert!(client.is_paused());
@@ -2940,11 +2963,7 @@ fn test_settlement_age_rejects_unknown_id() {
     let env = Env::default();
     let (client, _admin, _anchor, _asset) = funded(&env, 1_000);
 
-    let err = client
-        .try_settlement_age(&99)
-        .err()
-        .unwrap()
-        .unwrap();
+    let err = client.try_settlement_age(&99).err().unwrap().unwrap();
     assert_eq!(err, Error::SettlementNotFound);
 }
 
@@ -4451,7 +4470,9 @@ fn test_list_settlements_by_anchor_and_asset_start_past_end_returns_empty() {
     client.open_settlement(&anchor, &asset, &100);
 
     assert_eq!(
-        client.list_settlements_by_anchor_and_asset(&anchor, &asset, &3, &10).len(),
+        client
+            .list_settlements_by_anchor_and_asset(&anchor, &asset, &3, &10)
+            .len(),
         0
     );
     assert_eq!(
@@ -4469,11 +4490,15 @@ fn test_list_settlements_by_anchor_and_asset_limit_zero_returns_empty() {
     client.open_settlement(&anchor, &asset, &100);
 
     assert_eq!(
-        client.list_settlements_by_anchor_and_asset(&anchor, &asset, &1, &0).len(),
+        client
+            .list_settlements_by_anchor_and_asset(&anchor, &asset, &1, &0)
+            .len(),
         0
     );
     assert_eq!(
-        client.list_settlements_by_anchor_and_asset(&anchor, &asset, &0, &0).len(),
+        client
+            .list_settlements_by_anchor_and_asset(&anchor, &asset, &0, &0)
+            .len(),
         0
     );
 }
@@ -5083,4 +5108,66 @@ fn test_get_fees_accrued_read_on_unconfigured_asset_is_safe() {
     // returns `0` without trying to extend an absent entry.
     let never_settled = symbol_short!("EURC");
     assert_eq!(client.fees_accrued(&never_settled), 0);
+}
+
+#[test]
+fn test_withdraw_liquidity_multi_atomic_rejection_on_min_liquidity_floor_violation() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let ast1 = symbol_short!("AST1");
+    let ast2 = symbol_short!("AST2");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    client.provide_liquidity(&anchor, &ast1, &1_000);
+    client.provide_liquidity(&anchor, &ast2, &1_000);
+
+    client.set_min_liquidity(&ast2, &700);
+
+    let requests = vec![&env, (ast1.clone(), 500), (ast2.clone(), 400)];
+    let err = client
+        .try_withdraw_liquidity_multi(&anchor, &requests)
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(err, Error::BelowMinLiquidity);
+    assert_eq!(client.balance(&anchor, &ast1), 1_000);
+    assert_eq!(client.balance(&anchor, &ast2), 1_000);
+    assert_eq!(client.total_liquidity(&ast1), 1_000);
+    assert_eq!(client.total_liquidity(&ast2), 1_000);
+}
+
+#[test]
+fn test_open_settlement_enforces_per_asset_max_settlement_amount_cap() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = setup(&env);
+    let anchor = Address::generate(&env);
+    let ast1 = symbol_short!("AST1");
+    let ast2 = symbol_short!("AST2");
+
+    client.initialize(&admin);
+    client.register_anchor(&anchor);
+
+    client.provide_liquidity(&anchor, &ast1, &1_000);
+    client.provide_liquidity(&anchor, &ast2, &1_000);
+
+    client.set_max_settlement_amount(&ast1, &500);
+
+    let err = client
+        .try_open_settlement(&anchor, &ast1, &600)
+        .err()
+        .unwrap()
+        .unwrap();
+    assert_eq!(err, Error::AboveMaxSettlementAmount);
+
+    let id1 = client.open_settlement(&anchor, &ast1, &500);
+    assert_eq!(id1, 1);
+
+    let id2 = client.open_settlement(&anchor, &ast2, &600);
+    assert_eq!(id2, 2);
 }
