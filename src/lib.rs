@@ -11,7 +11,7 @@ mod storage;
 mod types;
 
 pub use error::Error;
-pub use types::{ContractInfo, Pool, Settlement, SettlementStatus};
+pub use types::{AnchorStatus, ContractInfo, Pool, Settlement, SettlementStatus};
 
 /// Maximum protocol fee that can be configured: 1000 bps (10%).
 const MAX_FEE_BPS: u32 = 1_000;
@@ -223,10 +223,7 @@ impl AnchornetContract {
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        Self::calculate_fee(
-            amount,
-            Self::effective_fee_bps(&env, &asset),
-        )
+        Self::calculate_fee(amount, Self::effective_fee_bps(&env, &asset))
     }
 
     /// Grants or revokes a protocol fee waiver for `anchor`. While waived,
@@ -395,6 +392,10 @@ impl AnchornetContract {
     /// Returns `true` if `anchor` is a registered liquidity provider.
     pub fn is_anchor(env: Env, anchor: Address) -> bool {
         storage::is_anchor(&env, &anchor)
+    }
+
+    pub fn anchor_status(env: Env, anchor: Address) -> AnchorStatus {
+        storage::anchor_status(&env, &anchor)
     }
 
     /// Returns up to `limit` currently registered anchors, in registration
@@ -725,7 +726,10 @@ impl AnchornetContract {
         }
 
         let mut pool = storage::get_pool(&env, &settlement.asset);
-        pool.total = pool.total.checked_add(settlement.amount).ok_or(Error::Overflow)?;
+        pool.total = pool
+            .total
+            .checked_add(settlement.amount)
+            .ok_or(Error::Overflow)?;
         storage::set_pool(&env, &settlement.asset, &pool);
 
         settlement.status = SettlementStatus::Cancelled;
@@ -776,7 +780,10 @@ impl AnchornetContract {
         }
 
         let mut pool = storage::get_pool(&env, &settlement.asset);
-        pool.total = pool.total.checked_add(settlement.amount).ok_or(Error::Overflow)?;
+        pool.total = pool
+            .total
+            .checked_add(settlement.amount)
+            .ok_or(Error::Overflow)?;
         storage::set_pool(&env, &settlement.asset, &pool);
 
         settlement.status = SettlementStatus::Expired;

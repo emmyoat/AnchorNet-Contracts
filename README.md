@@ -59,6 +59,7 @@ state.
 | `register_anchor(anchor)` | admin | Approve an anchor as a liquidity provider |
 | `register_anchors(anchors)` | admin | Approve a batch of anchors atomically in one call |
 | `is_anchor(anchor)` | – | Check whether an address is registered |
+| `anchor_status(anchor)` | – | Read the registration status (`NeverRegistered`, `Active`, or `Deregistered`) of an address |
 | `list_anchors(start, limit)` | – | Page through currently registered anchors |
 | `anchor_count()` | – | Read the number of currently registered anchors |
 | `provide_liquidity(provider, asset, amount)` | provider | Add liquidity to a pool |
@@ -235,8 +236,9 @@ it without an off-chain registry.
 
 1. Fork the repo and create a branch from `main`.
 2. Make changes; keep formatting with `cargo fmt --all`.
-3. Run `cargo fmt --all -- --check`, `cargo build`, and `cargo test`.
-4. Open a pull request. CI will run format check, build, and tests.
+3. If modifying public contract functions, parameters, return types, data structures, error codes, or events, review and complete the [`Public API Compatibility Checklist`](docs/PUBLIC_API_CHECKLIST.md).
+4. Run `cargo fmt --all -- --check`, `cargo build`, and `cargo test`.
+5. Open a pull request. CI will run format check, build, and tests.
 
 ## License
 
